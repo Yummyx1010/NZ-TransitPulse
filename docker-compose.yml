@@ -1,3 +1,6 @@
+# OPTIONAL convenience setup for developers who do not already have MySQL 8.
+# The application itself is not containerised in Phase 0-5: it runs directly with
+# uvicorn and npm. Docker is not required for local development or for AWS deployment.
 services:
   mysql:
     image: mysql:8.0

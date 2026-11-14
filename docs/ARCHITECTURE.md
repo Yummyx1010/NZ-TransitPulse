@@ -17,14 +17,17 @@ flowchart LR
 
 | Component | Technology | Responsibility |
 | --- | --- | --- |
-| `backend/app` | Python 3.12, FastAPI, Pydantic | REST API, configuration, validation, OpenAPI docs |
+| `backend/app/api` | Python 3.12, FastAPI, Pydantic | REST API, validation, OpenAPI docs |
+| `backend/app/gtfs` | `zipfile`, `csv`, `httpx` | Parse and transactionally load the AT static bundle |
+| `backend/app/cli/gtfs.py` | argparse, Alembic | `migrate`, `check-db`, `load`, `status` commands |
+| `backend/app/models` | SQLAlchemy 2 ORM | GTFS static tables keyed by `feed_id` |
+| `backend/migrations` | Alembic | Versioned MySQL schema |
 | `backend/app/ingestion` (Phase 2+) | `httpx`, scheduled worker | Poll AT feeds, decode GTFS-RT, publish snapshot |
 | `backend/app/collector` (Phase 4+) | SQLAlchemy | Persist derived delay observations, enforce retention |
 | `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends |
-| `backend/migrations` (Phase 1+) | Alembic | Versioned MySQL schema |
-| Database | MySQL 8 (Docker Compose locally, RDS later) | Static network, observations, aggregates |
-| `frontend` (Phase 1+) | React, TypeScript, Vite, TanStack Query, Leaflet, Recharts | Explorer, live map, analytics dashboard |
-| CI | GitHub Actions | Lint and test on every push |
+| Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, observations, aggregates |
+| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Static network explorer with a stop map (live vehicles in Phase 3, analytics in Phase 5) |
+| CI | GitHub Actions | Backend lint/tests and frontend typecheck/tests/build |
 
 ## Data flow
 
@@ -54,14 +57,23 @@ flowchart LR
 | Full snapshots, no diffing | The AT feed does not support incremental updates |
 | Configurable endpoint URLs | Legacy and Compat API paths differ per subscription |
 | Data-sufficiency labels | Reliability claims require weeks of observations, not minutes |
+| Feed-version staging | A new GTFS bundle is loaded under a new `feed_id` and activated in one transaction, so readers never see a half-imported network |
+| BOM and nested-folder tolerant parsing | Real GTFS bundles differ in encoding and archive layout |
+| GTFS times stored as both raw string and seconds | Supports scheduled times past `24:00:00` without losing the original value |
+| Geo search uses a bounding box | Adequate for "stops near me" at city scale; a spatial index can replace it later |
+| No database-level FKs between child tables | Keeps bulk inserts fast; referential integrity is enforced by the loader transaction |
 
 ## Local topology (Phase 0-5)
 
 ```text
-localhost:3306  MySQL 8 (Docker Compose or local install)
+localhost:3306  MySQL 8 (local install; container optional)
 localhost:8000  FastAPI  (uvicorn --reload)
 localhost:5173  Vite dev server (proxies /api to :8000)
 ```
+
+Phase 1 runs entirely against the local MySQL server. Phase 0-5 unit and API tests use
+an in-memory/file SQLite database so they never require MySQL credentials; the opt-in
+`integration` test verifies the real MySQL schema.
 
 ## Target AWS topology (Phase 7, post-MVP)
 

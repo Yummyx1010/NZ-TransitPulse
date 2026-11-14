@@ -7,8 +7,8 @@ Re-check these pages before enabling the historical collector in Phase 4.
 
 | Source | Used for | Format | Access |
 | --- | --- | --- | --- |
-| AT GTFS static bundle (routes, stops, trips, stop_times, shapes, calendar) | Phase 1 network explorer, schedule baseline for delay calculations | GTFS zip (CSV) | Public download, no key required |
-| AT GTFS-Realtime: Vehicle Positions | Phase 2 live map | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
+| AT GTFS static bundle (`agency`, `routes`, `stops`, `trips`, `stop_times`; plus `calendar`, `shapes` and others) | Phase 1 network explorer, schedule baseline for delay calculations | GTFS zip (CSV) | Public download, no key required |
+| AT GTFS-Realtime: Vehicle Positions | Phase 2 realtime API, Phase 3 live map | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
 | AT GTFS-Realtime: Trip Updates | Phase 2/3 ETAs, Phase 4/5 delay observations | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
 | AT GTFS-Realtime: Service Alerts | Phase 3 disruption panel | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
 
@@ -17,6 +17,8 @@ Re-check these pages before enabling the historical collector in Phase 4.
 - AT data sources (licence overview): <https://at.govt.nz/about-us/at-data-sources>
 - AT GTFS static download and specification page:
   <https://at.govt.nz/bus-train-ferry/more-services/google-transit-feed>
+- Official GTFS bundle URL used by the loader (confirmed via the Mobility Database
+  producer URL and Transitland feed registry): <https://gtfs.at.govt.nz/gtfs.zip>
 - AT developer portal: <https://dev-portal.at.govt.nz>
 - Getting started with the Realtime API: <https://pp-dev-portal.at.govt.nz/realtime-api>
 - API terms of use: <https://pp-dev-portal.at.govt.nz/api-terms-of-use>

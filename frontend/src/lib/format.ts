@@ -1,0 +1,22 @@
+import type { RouteSummary, StopSummary } from "../api/types";
+
+export function displayRouteName(route: RouteSummary): string {
+  const short = route.short_name.trim();
+  const long = route.long_name.trim();
+  if (short && long && short.toLowerCase() !== long.toLowerCase()) {
+    return `${short} · ${long}`;
+  }
+  return short || long || "Unnamed route";
+}
+
+export function displayStopName(stop: StopSummary): string {
+  return stop.code ? `${stop.name} (${stop.code})` : stop.name;
+}
+
+export function formatCoordinate(value: number): string {
+  return value.toFixed(5);
+}
+
+export function modeClass(mode: string): string {
+  return `badge badge-${mode.toLowerCase().replace(/\s+/g, "-")}`;
+}

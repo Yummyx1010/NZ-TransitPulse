@@ -6,8 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from ..core.config import Settings
-
-ATTRIBUTION = "Data source: Auckland Transport, licensed under CC BY 4.0"
+from ..core.constants import ATTRIBUTION
 
 
 class HealthResponse(BaseModel):

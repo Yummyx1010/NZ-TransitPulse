@@ -30,7 +30,10 @@ class Settings(BaseSettings):
     app_name: str = "NZ TransitPulse API"
     api_v1_prefix: str = "/api/v1"
     cors_origins: str = "http://localhost:5173"
-    database_url: str = "mysql+pymysql://transitpulse:transitpulse@localhost:3306/transitpulse"
+    database_url: str = "mysql+pymysql://transitpulse:transitpulse@127.0.0.1:3306/transitpulse"
+    database_echo: bool = False
+    gtfs_static_url: str = "https://gtfs.at.govt.nz/gtfs.zip"
+    gtfs_data_dir: str = "data/gtfs"
 
     at_api_base_url: str = "https://api.at.govt.nz"
     at_api_key: str = ""

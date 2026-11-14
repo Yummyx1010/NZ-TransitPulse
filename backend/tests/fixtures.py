@@ -1,0 +1,69 @@
+"""Small in-memory GTFS bundles used by the test suite.
+
+The fixture mimics the parts of the AT feed that Phase 1 consumes, including a
+nested folder, a UTF-8 BOM, an invalid coordinate and a time past midnight.
+"""
+
+from __future__ import annotations
+
+import io
+import zipfile
+
+AGENCY = (
+    "agency_id,agency_name,agency_url,agency_timezone\n"
+    "AT,Auckland Transport,https://at.govt.nz,Pacific/Auckland\n"
+)
+ROUTES = (
+    "route_id,agency_id,route_short_name,route_long_name,route_type,"
+    "route_color,route_text_color\n"
+    "R1,AT,18,New North Road,3,FF0000,FFFFFF\n"
+    "R2,AT,WEST,Western Line,2,0000FF,FFFFFF\n"
+    "R3,AT,DEV,Devonport Ferry,4,00AA00,FFFFFF\n"
+)
+STOPS = (
+    "stop_id,stop_code,stop_name,stop_lat,stop_lon,location_type\n"
+    "S1,1001,Britomart,-36.8443,174.7670,0\n"
+    "S2,1002,Newmarket,-36.8710,174.7770,0\n"
+    "S3,1003,Devonport,-36.8270,174.7960,0\n"
+    "S4,,Bad Stop,999,999,0\n"
+)
+TRIPS = (
+    "trip_id,route_id,service_id,trip_headsign,direction_id\n"
+    "T1,R1,WEEKDAY,City Centre,0\n"
+    "T2,R2,WEEKDAY,Swanson,1\n"
+    "T3,R3,WEEKDAY,Devonport,0\n"
+)
+STOP_TIMES = (
+    "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+    "T1,08:00:00,08:00:30,S1,1\n"
+    "T1,08:15:00,08:15:00,S2,2\n"
+    "T2,25:10:00,25:10:00,S2,1\n"
+    "T3,09:00:00,09:00:00,S3,1\n"
+)
+
+BASE_TABLES: dict[str, str] = {
+    "agency.txt": AGENCY,
+    "routes.txt": ROUTES,
+    "stops.txt": STOPS,
+    "trips.txt": TRIPS,
+    "stop_times.txt": STOP_TIMES,
+}
+
+
+def build_fixture_zip(
+    *,
+    overrides: dict[str, str] | None = None,
+    omit: tuple[str, ...] = (),
+) -> bytes:
+    """Build a GTFS zip in memory; override or omit tables to test edge cases."""
+    tables = {**BASE_TABLES, **(overrides or {})}
+    for name in omit:
+        tables.pop(name, None)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, content in tables.items():
+            member = f"at_gtfs/{name}" if name == "agency.txt" else name
+            payload = f"\ufeff{content}" if name == "routes.txt" else content
+            archive.writestr(member, payload)
+    return buffer.getvalue()

@@ -33,7 +33,8 @@ commits before the phase tag.
    API or schema changes, how to verify, known limitations, next phase).
 4. `docs/test-reports/PHASE-XX.md` is written (environment, exact commands, results,
    coverage, failures and resolutions).
-5. `README.md` and `ROADMAP.md` reflect the new status.
+5. `README.md` and `ROADMAP.md` reflect the new status, including a new row in the
+   README phase index linking the implementation document and test report.
 6. No secrets, API keys, database dumps or raw feed payloads are staged.
 7. Manual commit commands are provided to the repository owner.
 

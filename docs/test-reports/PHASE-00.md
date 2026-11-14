@@ -132,7 +132,11 @@ YAML 1.2, where `on` is a normal key. This is a parser artefact, not a file erro
 
 | Item | Reason | Planned verification |
 | --- | --- | --- |
-| `docker compose up -d mysql` | Docker is not installed on this machine | Phase 1, when the schema and DB connection are added |
+| `docker compose up -d mysql` | Docker is not installed and is not required; the repository owner uses a local MySQL 8 server | Not a gate. Phase 1 verifies the schema via the opt-in MySQL integration test; see `PHASE-01.md` |
+
+> **Amendment (2026-11-14):** after the repository owner confirmed a local MySQL
+> installation, the planned Docker verification above was reclassified as optional.
+> No test result in this report changed.
 | GitHub Actions workflow | No remote push has been made | First push of Phase 0 |
 | AT GTFS-Realtime endpoints, key and quota | No developer portal subscription key yet | Phase 2 |
 | React / Vite frontend | Introduced in Phase 1 | Phase 1 test report |

@@ -26,6 +26,11 @@ The MVP is reached at the end of **Phase 5**. AWS deployment is deliberately pos
 | 6 | Hardening | Production readiness before cloud deployment | Caching, observability (metrics/logs/traces), error budgets, security review, load tests, runbook |  |
 | 7 | AWS deployment | Runs on AWS | RDS MySQL, ECS Fargate, ALB, S3 + CloudFront, Secrets Manager, IaC, deployment runbook |  |
 
+**Status (2026-11-14):** Phase 0 and Phase 1 are complete and verified; Phase 2
+(GTFS-Realtime ingestion) is next. Phase 1 added the MySQL schema and Alembic
+migrations, the GTFS static loader CLI, six read-only network endpoints, and the React
+network explorer.
+
 ## Phase dependencies
 
 ```text
@@ -37,7 +42,9 @@ Phase 0 ──> Phase 1 ──> Phase 3 ──> Phase 5 ──> Phase 6 ──> 
 
 ## Scope control
 
-- Phase 0-5 run entirely locally (`localhost`), with no cloud account required.
+- Phase 0-5 run entirely locally (`localhost`), with no AWS account required. From
+  Phase 2 onwards an Auckland Transport developer portal subscription key is needed;
+  see `docs/DATA_SOURCES.md`.
 - No authentication, payments, or user accounts in the MVP.
 - No raw GTFS-Realtime payload redistribution; see `DATA_SOURCES.md`.
 - Map tiles come from OpenStreetMap via Leaflet so no paid map token is required.

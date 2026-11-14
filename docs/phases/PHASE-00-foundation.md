@@ -4,6 +4,9 @@
 - **Date:** 2026-11-14
 - **Branch (suggested):** `phase/00-foundation`
 - **Tag (suggested):** `phase-00`
+- **Amendment (2026-11-14):** local MySQL is the primary development path and Docker
+  is optional. Sections 8 and 9 below were updated accordingly; no code or test
+  results changed.
 
 ## 1. Scope
 
@@ -117,8 +120,9 @@ poll-interval validation. Result: **12 passed, 100% statement coverage**, plus a
 
 ## 8. Known limitations and risks
 
-- Docker is not installed in the environment used for this phase, so
-  `docker-compose.yml` was reviewed but not executed. It will be verified in Phase 1.
+- Docker is not installed and is not required. `docker-compose.yml` is an optional
+  convenience for developers without a local MySQL server; Phase 1 connects to the
+  owner's local MySQL 8 instance instead.
 - The GitHub Actions workflow has not run yet; it executes after the first push.
 - No AT developer portal subscription key was available, so live feed access is
   unverified. The exact endpoint paths and quota must be confirmed in Phase 2.
@@ -134,7 +138,7 @@ poll-interval validation. Result: **12 passed, 100% statement coverage**, plus a
 
 Phase 1 downloads the AT GTFS static bundle, introduces Alembic migrations and the
 MySQL schema, exposes routes/stops/trips endpoints, and adds the React map-based
-network explorer. It will also verify the MySQL container and the CI workflow.
+network explorer. It will also verify the local MySQL connection and the CI workflow.
 
 ## 10. Manual commit
 
