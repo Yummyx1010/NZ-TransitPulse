@@ -30,6 +30,7 @@ class GtfsFeed(Base):
     stop_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     trip_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     stop_time_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    shape_point_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class Agency(Base):
@@ -90,6 +91,19 @@ class Trip(Base):
     block_id: Mapped[str | None] = mapped_column(String(64))
     shape_id: Mapped[str | None] = mapped_column(String(64))
     wheelchair_accessible: Mapped[int | None] = mapped_column(Integer)
+
+
+class ShapePoint(Base):
+    """One ordered point of a GTFS shape (a drawn route path)."""
+
+    __tablename__ = "shape_points"
+
+    feed_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shape_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    shape_pt_sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lon: Mapped[float] = mapped_column(Float, nullable=False)
+    dist_traveled: Mapped[float | None] = mapped_column(Float)
 
 
 class StopTime(Base):

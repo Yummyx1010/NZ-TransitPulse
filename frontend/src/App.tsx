@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "./api/client";
@@ -11,7 +11,12 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    setSelectedShapeId(null);
+  }, [selectedRouteId]);
 
   const statusQuery = useQuery({
     queryKey: ["network-status"],
@@ -26,15 +31,20 @@ export default function App() {
         limit: 100,
       }),
   });
-  const stopsQuery = useQuery({
-    queryKey: ["route-stops", selectedRouteId],
-    queryFn: () => api.routeStops(selectedRouteId ?? ""),
+  const geometryQuery = useQuery({
+    queryKey: ["route-geometry", selectedRouteId],
+    queryFn: () => api.routeGeometry(selectedRouteId ?? ""),
     enabled: selectedRouteId !== null,
   });
 
   const routes = routesQuery.data?.items ?? [];
-  const stops = selectedRouteId ? (stopsQuery.data?.items ?? []) : [];
+  const geometry = geometryQuery.data ?? null;
   const selectedRoute = routes.find((route) => route.route_id === selectedRouteId) ?? null;
+  const shape =
+    geometry?.shapes.find((item) => item.shape_id === selectedShapeId) ??
+    geometry?.shapes[0] ??
+    null;
+  const orderedStops = shape?.stops ?? [];
   const hasData = statusQuery.data?.has_data ?? false;
   const statusLabel = statusQuery.isError
     ? "API offline"
@@ -83,28 +93,49 @@ export default function App() {
               <h2>{selectedRoute ? displayRouteName(selectedRoute) : "Select a route"}</h2>
               {selectedRoute ? (
                 <p className="muted">
-                  {selectedRoute.mode} route · {stops.length} stop{stops.length === 1 ? "" : "s"}{" "}
-                  shown
+                  {selectedRoute.mode} route · {orderedStops.length} stop
+                  {orderedStops.length === 1 ? "" : "s"} shown
+                  {geometry ? ` · ${geometry.shape_count} route pattern${geometry.shape_count === 1 ? "" : "s"}` : ""}
                 </p>
               ) : (
-                <p className="muted">Choose a route to see its stops on the map.</p>
+                <p className="muted">Choose a route to see its geometry on the map.</p>
               )}
             </div>
+            {geometry && geometry.shapes.length > 1 ? (
+              <label className="shape-select">
+                <span>Route pattern</span>
+                <select
+                  aria-label="Route pattern"
+                  value={shape?.shape_id ?? ""}
+                  onChange={(event) => setSelectedShapeId(event.target.value)}
+                >
+                  {geometry.shapes.map((item) => (
+                    <option key={item.shape_id} value={item.shape_id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </div>
 
           <StopMap
-            stops={stops}
+            shape={shape}
+            approximate={geometry?.approximate ?? false}
+            note={geometry?.note ?? ""}
             emptyMessage={
-              stopsQuery.isLoading
-                ? "Loading stops..."
-                : "Select a route to see its stops on the map."
+              geometryQuery.isLoading
+                ? "Loading route geometry..."
+                : selectedRoute
+                  ? "No geometry available for this route."
+                  : "Select a route to see its geometry on the map."
             }
           />
 
-          {stops.length > 0 ? (
+          {orderedStops.length > 0 ? (
             <ol className="stop-list">
-              {stops.map((stop) => (
-                <li key={stop.stop_id}>
+              {orderedStops.map((stop, index) => (
+                <li key={`${stop.stop_id}-${index}`}>
                   <span>{displayStopName(stop)}</span>
                   <span className="muted">{stop.stop_id}</span>
                 </li>

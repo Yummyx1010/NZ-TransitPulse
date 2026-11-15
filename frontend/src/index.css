@@ -257,6 +257,45 @@ h2 {
   font-size: 0.9rem;
 }
 
+.map-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.map-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.shape-select {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 220px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.shape-select select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 400;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
 .stop-list {
   margin: 0;
   padding-left: 22px;

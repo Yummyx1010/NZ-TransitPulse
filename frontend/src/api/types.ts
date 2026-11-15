@@ -46,3 +46,22 @@ export interface RouteQuery {
   mode?: string;
   limit?: number;
 }
+
+export interface ShapeGeometry {
+  shape_id: string;
+  label: string;
+  trip_count: number;
+  direction_id: number | null;
+  headsign: string | null;
+  points: [number, number][];
+  stops: StopSummary[];
+}
+
+export interface RouteGeometry {
+  route_id: string;
+  source: "shapes" | "stop_times";
+  approximate: boolean;
+  note: string;
+  shape_count: number;
+  shapes: ShapeGeometry[];
+}

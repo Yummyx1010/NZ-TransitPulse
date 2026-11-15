@@ -80,9 +80,17 @@ set "TP_RUN_MYSQL_INTEGRATION=1"
 .venv\Scripts\python.exe -m pytest tests/integration -m integration
 ```
 
-`check-db` prints the MySQL version and the list of tables. `migrate` applies
-`migrations/versions/0001_initial_gtfs_schema.py`, creating all six Phase 1 tables plus
-Alembic's own `alembic_version` table.
+`check-db` prints the MySQL version and the list of tables. `migrate` applies all Alembic
+revisions: `0001_initial_gtfs_schema.py` (six core tables) and
+`0002_route_shape_points.py` (the `shape_points` table plus
+`gtfs_feeds.shape_point_count`), as well as Alembic's own `alembic_version` table.
+
+After applying `0002` to a database that already contains a feed, re-import once so the
+existing data gains its geometry. The checksum is unchanged, so `--force` is required:
+
+```bat
+python -m app.cli.gtfs load --file data\gtfs\gtfs-<hash>.zip --force
+```
 
 DataGrip will not show new tables automatically — right-click the `transitpulse` schema
 and choose **Refresh** (or press `Ctrl+F5` in the Database tool window).
@@ -98,7 +106,7 @@ Troubleshooting:
 | `Table 'gtfs_feeds' doesn't exist` | `migrate` has not been run | `python -m app.cli.gtfs migrate` |
 | `Table ... already exists` | The database was previously created by hand | Run `alembic stamp head` only if the schema already matches, otherwise drop the tables and re-run `migrate` |
 
-## 3. Schema (Phase 1)
+## 3. Schema (Phase 1 + 1B)
 
 All GTFS tables include `feed_id` as part of their primary key. `gtfs_feeds` records
 every import and marks exactly one row as active.
@@ -109,11 +117,14 @@ every import and marks exactly one row as active.
 | `agencies` | `feed_id`, `agency_id` | Operators |
 | `routes` | `feed_id`, `route_id` | Bus / rail / ferry routes, colours, `route_type` |
 | `stops` | `feed_id`, `stop_id` | Stop names, codes, coordinates |
-| `trips` | `feed_id`, `trip_id` | Trips linked to routes and services |
+| `trips` | `feed_id`, `trip_id` | Trips linked to routes, services and `shape_id` |
 | `stop_times` | `feed_id`, `trip_id`, `stop_sequence` | Scheduled arrival/departure, raw GTFS time and seconds since service-day midnight |
+| `shape_points` | `feed_id`, `shape_id`, `shape_pt_sequence` | Ordered points of the real drawn route geometry from `shapes.txt` |
 
 Indexes: `ix_gtfs_feeds_checksum`, `ix_routes_feed_type`,
 `ix_stops_feed_position`, `ix_trips_feed_route`, `ix_stop_times_feed_stop`.
+`shape_points` uses its composite primary key as the lookup path, already ordered by
+`shape_pt_sequence`.
 
 Design notes:
 
@@ -130,8 +141,9 @@ Design notes:
 - **No foreign keys between child tables:** bulk loading hundreds of thousands of rows
   is faster without them, and integrity is guaranteed by the loader transaction.
 
-Deferred to later phases: `calendar`, `calendar_dates`, `shapes`, `transfers`, fare
-tables, realtime snapshots and delay observations.
+Deferred to later phases: `calendar`, `calendar_dates`, `transfers`, fare tables,
+realtime snapshots and delay observations. `shapes.txt` was added in Phase 1B to provide
+real route geometry.
 
 ## 4. Loading data
 
@@ -141,9 +153,11 @@ python -m app.cli.gtfs status
 ```
 
 The loader downloads `https://gtfs.at.govt.nz/gtfs.zip`, validates the five required
-files (`agency.txt`, `routes.txt`, `stops.txt`, `trips.txt`, `stop_times.txt`), skips
-rows with invalid coordinates, and inserts in batches of 5,000 rows. The download is
-stored under a content-addressed filename in `data/gtfs/` (gitignored).
+files (`agency.txt`, `routes.txt`, `stops.txt`, `trips.txt`, `stop_times.txt`), reads the
+optional `shapes.txt`, skips rows with invalid coordinates or duplicate shape sequences,
+and inserts in batches of 5,000 rows. The download is stored under a content-addressed
+filename in `data/gtfs/` (gitignored). If `shapes.txt` is absent the map falls back to
+ordered `stop_times` and labels the result as an approximate route.
 
 To import a file you downloaded manually:
 

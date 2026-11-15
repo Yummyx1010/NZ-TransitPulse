@@ -1,7 +1,8 @@
 """Small in-memory GTFS bundles used by the test suite.
 
-The fixture mimics the parts of the AT feed that Phase 1 consumes, including a
-nested folder, a UTF-8 BOM, an invalid coordinate and a time past midnight.
+The fixture mimics the parts of the AT feed that the loader consumes, including a
+nested folder, a UTF-8 BOM, an invalid coordinate, a time past midnight, two
+different shapes on the same route, and shape points supplied out of order.
 """
 
 from __future__ import annotations
@@ -28,17 +29,30 @@ STOPS = (
     "S4,,Bad Stop,999,999,0\n"
 )
 TRIPS = (
-    "trip_id,route_id,service_id,trip_headsign,direction_id\n"
-    "T1,R1,WEEKDAY,City Centre,0\n"
-    "T2,R2,WEEKDAY,Swanson,1\n"
-    "T3,R3,WEEKDAY,Devonport,0\n"
+    "trip_id,route_id,service_id,trip_headsign,direction_id,shape_id\n"
+    "T1,R1,WEEKDAY,City Centre,0,SH1\n"
+    "T4,R1,WEEKDAY,Newmarket,1,SH4\n"
+    "T2,R2,WEEKDAY,Swanson,1,SH2\n"
+    "T3,R3,WEEKDAY,Devonport,0,SH3\n"
 )
 STOP_TIMES = (
     "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
-    "T1,08:00:00,08:00:30,S1,1\n"
-    "T1,08:15:00,08:15:00,S2,2\n"
+    "T1,08:00:00,08:00:30,S2,1\n"
+    "T1,08:15:00,08:15:00,S1,2\n"
+    "T4,09:00:00,09:00:00,S1,1\n"
+    "T4,09:20:00,09:20:00,S2,2\n"
     "T2,25:10:00,25:10:00,S2,1\n"
     "T3,09:00:00,09:00:00,S3,1\n"
+)
+SHAPES = (
+    "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence,shape_dist_traveled\n"
+    "SH1,-36.8500,174.7600,3,0.6\n"
+    "SH1,-36.8443,174.7670,1,0\n"
+    "SH1,-36.8470,174.7630,2,0.3\n"
+    "SH4,-36.8710,174.7770,1,0\n"
+    "SH4,-36.8600,174.7700,2,0.4\n"
+    "SH2,-36.8710,174.7770,1,0\n"
+    "SH3,-36.8270,174.7960,1,0\n"
 )
 
 BASE_TABLES: dict[str, str] = {
@@ -47,6 +61,7 @@ BASE_TABLES: dict[str, str] = {
     "stops.txt": STOPS,
     "trips.txt": TRIPS,
     "stop_times.txt": STOP_TIMES,
+    "shapes.txt": SHAPES,
 }
 
 

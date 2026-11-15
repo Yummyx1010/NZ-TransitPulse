@@ -3,22 +3,25 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..core.config import Settings
 from ..core.constants import ATTRIBUTION
 from ..core.modes import mode_from_label, mode_label
 from ..db.session import get_db
-from ..models import GtfsFeed, Route, Stop, StopTime, Trip
+from ..models import GtfsFeed, Route, ShapePoint, Stop, StopTime, Trip
 from ..schemas.network import (
     FeedInfo,
     NetworkStatus,
     RouteDetail,
+    RouteGeometry,
     RouteListResponse,
     RouteSummary,
+    ShapeGeometry,
     StopDetail,
     StopListResponse,
     StopSummary,
@@ -60,6 +63,102 @@ def _stop_ids_for_route(db: Session, feed_id: int, route_id: str):
         .where(StopTime.feed_id == feed_id, StopTime.trip_id.in_(trip_ids))
         .distinct()
     )
+
+
+def _shape_groups(db: Session, feed_id: int, route_id: str):
+    """Distinct shapes used by this route, ordered by how many trips use them."""
+    return db.execute(
+        select(
+            Trip.shape_id,
+            func.count(Trip.trip_id),
+            func.min(Trip.direction_id),
+            func.min(Trip.headsign),
+        )
+        .where(
+            Trip.feed_id == feed_id,
+            Trip.route_id == route_id,
+            Trip.shape_id.is_not(None),
+            Trip.shape_id != "",
+        )
+        .group_by(Trip.shape_id)
+        .order_by(func.count(Trip.trip_id).desc(), Trip.shape_id)
+    ).all()
+
+
+def _ordered_stop_ids(
+    db: Session, feed_id: int, route_id: str, shape_id: str
+) -> list[str]:
+    """Distinct stop ids ordered by their first scheduled stop_sequence."""
+    statement = (
+        select(StopTime.stop_id, func.min(StopTime.stop_sequence).label("first_seq"))
+        .join(
+            Trip,
+            and_(
+                Trip.feed_id == StopTime.feed_id,
+                Trip.trip_id == StopTime.trip_id,
+            ),
+        )
+        .where(
+            StopTime.feed_id == feed_id,
+            Trip.route_id == route_id,
+            Trip.shape_id == shape_id,
+        )
+        .group_by(StopTime.stop_id)
+        .order_by(func.min(StopTime.stop_sequence), StopTime.stop_id)
+    )
+    return [row[0] for row in db.execute(statement).all()]
+
+
+def _summaries_for_stop_ids(
+    db: Session, feed_id: int, stop_ids: list[str]
+) -> list[StopSummary]:
+    """Load stop details while preserving the requested order."""
+    if not stop_ids:
+        return []
+    found = db.scalars(
+        select(Stop).where(Stop.feed_id == feed_id, Stop.stop_id.in_(stop_ids))
+    ).all()
+    by_id = {stop.stop_id: stop_summary(stop) for stop in found}
+    return [by_id[stop_id] for stop_id in stop_ids if stop_id in by_id]
+
+
+def _shape_points(db: Session, feed_id: int, shape_id: str) -> list[list[float]]:
+    """Return shape points in their GTFS sequence order."""
+    rows = db.execute(
+        select(ShapePoint.lat, ShapePoint.lon)
+        .where(ShapePoint.feed_id == feed_id, ShapePoint.shape_id == shape_id)
+        .order_by(ShapePoint.shape_pt_sequence)
+    ).all()
+    return [[row[0], row[1]] for row in rows]
+
+
+def _stop_time_patterns(
+    db: Session, feed_id: int, route_id: str
+) -> list[tuple[tuple[str, ...], int]]:
+    """Group trips by their exact ordered stop sequence (shapes.txt fallback)."""
+    rows = db.execute(
+        select(StopTime.trip_id, StopTime.stop_sequence, StopTime.stop_id)
+        .join(
+            Trip,
+            and_(
+                Trip.feed_id == StopTime.feed_id,
+                Trip.trip_id == StopTime.trip_id,
+            ),
+        )
+        .where(StopTime.feed_id == feed_id, Trip.route_id == route_id)
+        .order_by(StopTime.trip_id, StopTime.stop_sequence)
+    ).all()
+    by_trip: dict[str, list[str]] = defaultdict(list)
+    for trip_id, _, stop_id in rows:
+        by_trip[trip_id].append(stop_id)
+    patterns: dict[tuple[str, ...], list[str]] = defaultdict(list)
+    for trip_id, sequence in by_trip.items():
+        if sequence:
+            patterns[tuple(sequence)].append(trip_id)
+    ordered = sorted(
+        patterns.items(), key=lambda item: (-len(item[1]), item[0])
+    )
+    return [(sequence, len(trip_ids)) for sequence, trip_ids in ordered]
 
 
 def create_network_router(settings: Settings) -> APIRouter:
@@ -178,6 +277,98 @@ def create_network_router(settings: Settings) -> APIRouter:
             total=total,
             limit=limit,
             offset=offset,
+        )
+
+    @router.get(
+        "/routes/{route_id}/geometry",
+        response_model=RouteGeometry,
+        summary="Route geometry grouped by shape, never combined across trips",
+    )
+    def route_geometry(
+        route_id: str, db: Session = Depends(get_db)
+    ) -> RouteGeometry:
+        feed_id = _active_feed_id(db)
+        exists = (
+            db.scalar(
+                select(Route.route_id).where(
+                    Route.feed_id == feed_id, Route.route_id == route_id
+                )
+            )
+            if feed_id is not None
+            else None
+        )
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Route not found")
+
+        has_points = (
+            db.scalar(
+                select(func.count())
+                .select_from(ShapePoint)
+                .where(ShapePoint.feed_id == feed_id)
+            )
+            or 0
+        )
+        groups = _shape_groups(db, feed_id, route_id) if has_points else []
+        shapes: list[ShapeGeometry] = []
+
+        if groups:
+            for shape_id, trip_count, direction_id, headsign in groups:
+                stop_ids = _ordered_stop_ids(db, feed_id, route_id, shape_id)
+                stops = _summaries_for_stop_ids(db, feed_id, stop_ids)
+                points = _shape_points(db, feed_id, shape_id)
+                if not points:
+                    points = [[stop.lat, stop.lon] for stop in stops]
+                heading = (headsign or "").strip()
+                base = heading or (
+                    f"Direction {direction_id}"
+                    if direction_id is not None
+                    else "Route pattern"
+                )
+                shapes.append(
+                    ShapeGeometry(
+                        shape_id=shape_id,
+                        label=f"{base[:80]} · {trip_count} trips",
+                        trip_count=trip_count,
+                        direction_id=direction_id,
+                        headsign=heading or None,
+                        points=points,
+                        stops=stops,
+                    )
+                )
+            source = "shapes"
+            approximate = False
+            note = (
+                "Route geometry from GTFS shapes.txt (actual road geometry). "
+                "Each shape is drawn separately; directions and branches are not combined."
+            )
+        else:
+            for index, (sequence, trip_count) in enumerate(
+                _stop_time_patterns(db, feed_id, route_id), start=1
+            ):
+                stops = _summaries_for_stop_ids(db, feed_id, list(sequence))
+                shapes.append(
+                    ShapeGeometry(
+                        shape_id=f"stop-times-{index}",
+                        label=f"Pattern {index} · {trip_count} trips",
+                        trip_count=trip_count,
+                        points=[[stop.lat, stop.lon] for stop in stops],
+                        stops=stops,
+                    )
+                )
+            source = "stop_times"
+            approximate = True
+            note = (
+                "Approximate route: shapes.txt is unavailable, so lines follow the "
+                "scheduled stop order from stop_times. This is not actual road geometry."
+            )
+
+        return RouteGeometry(
+            route_id=route_id,
+            source=source,
+            approximate=approximate,
+            note=note,
+            shape_count=len(shapes),
+            shapes=shapes,
         )
 
     @router.get("/stops", response_model=StopListResponse, summary="List or locate stops")

@@ -72,3 +72,26 @@ class StopListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ShapeGeometry(BaseModel):
+    """One distinct route pattern, kept separate from unrelated trips."""
+
+    shape_id: str
+    label: str
+    trip_count: int
+    direction_id: int | None = None
+    headsign: str | None = None
+    points: list[list[float]] = []
+    stops: list[StopSummary] = []
+
+
+class RouteGeometry(BaseModel):
+    """Drawn geometry for a single route, grouped by shape or stop-time pattern."""
+
+    route_id: str
+    source: str
+    approximate: bool
+    note: str
+    shape_count: int
+    shapes: list[ShapeGeometry]

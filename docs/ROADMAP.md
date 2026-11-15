@@ -26,10 +26,12 @@ The MVP is reached at the end of **Phase 5**. AWS deployment is deliberately pos
 | 6 | Hardening | Production readiness before cloud deployment | Caching, observability (metrics/logs/traces), error budgets, security review, load tests, runbook |  |
 | 7 | AWS deployment | Runs on AWS | RDS MySQL, ECS Fargate, ALB, S3 + CloudFront, Secrets Manager, IaC, deployment runbook |  |
 
-**Status (2026-11-14):** Phase 0 and Phase 1 are complete and verified; Phase 2
-(GTFS-Realtime ingestion) is next. Phase 1 added the MySQL schema and Alembic
-migrations, the GTFS static loader CLI, six read-only network endpoints, and the React
-network explorer.
+**Status (2026-11-15):** Phase 0, Phase 1 and the Phase 1B route-geometry fix are
+complete and verified; Phase 2 (GTFS-Realtime ingestion) is next. Phase 1 added the
+MySQL schema and Alembic migrations, the GTFS static loader CLI, six read-only network
+endpoints, and the React network explorer. Phase 1B imported `shapes.txt`, added the
+per-shape geometry endpoint, and replaced the straight-line stop map with real route
+geometry (see `docs/phases/PHASE-01B-route-geometry.md`).
 
 ## Phase dependencies
 

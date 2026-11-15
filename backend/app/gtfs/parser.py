@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REQUIRED_FILES = ("agency.txt", "routes.txt", "stops.txt", "trips.txt", "stop_times.txt")
+OPTIONAL_FILES = ("shapes.txt",)
+
+SHAPE_COLUMNS = ("shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence")
 
 REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
     "agency.txt": ("agency_name",),
@@ -77,7 +80,7 @@ def read_archive_bytes(data: bytes, source: str) -> FeedArchive:
     checksum = hashlib.sha256(data).hexdigest()
     tables: dict[str, list[dict[str, str]]] = {}
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        for filename in REQUIRED_FILES:
+        for filename in (*REQUIRED_FILES, *OPTIONAL_FILES):
             member = _member_named(archive, filename)
             if member is not None:
                 tables[filename] = _read_table(archive, member)
@@ -136,3 +139,13 @@ def parse_coordinate(value: str | None, lower: float, upper: float) -> float | N
     except ValueError:
         return None
     return number if lower <= number <= upper else None
+
+
+def parse_float(value: str | None) -> float | None:
+    """Parse an optional GTFS floating-point field."""
+    if value is None or not value.strip():
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None

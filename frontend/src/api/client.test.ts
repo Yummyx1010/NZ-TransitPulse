@@ -25,6 +25,15 @@ describe("API client", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/routes/R%201%2F2/stops");
   });
 
+  it("builds a route geometry request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.routeGeometry("R 1/2");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/routes/R%201%2F2/geometry");
+  });
+
   it("throws a descriptive error on a failed response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
 

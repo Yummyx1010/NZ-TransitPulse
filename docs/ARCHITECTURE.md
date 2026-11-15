@@ -18,7 +18,7 @@ flowchart LR
 | Component | Technology | Responsibility |
 | --- | --- | --- |
 | `backend/app/api` | Python 3.12, FastAPI, Pydantic | REST API, validation, OpenAPI docs |
-| `backend/app/gtfs` | `zipfile`, `csv`, `httpx` | Parse and transactionally load the AT static bundle |
+| `backend/app/gtfs` | `zipfile`, `csv`, `httpx` | Parse and transactionally load the AT static bundle, including `shapes.txt` geometry |
 | `backend/app/cli/gtfs.py` | argparse, Alembic | `migrate`, `check-db`, `load`, `status` commands |
 | `backend/app/models` | SQLAlchemy 2 ORM | GTFS static tables keyed by `feed_id` |
 | `backend/migrations` | Alembic | Versioned MySQL schema |
@@ -26,7 +26,7 @@ flowchart LR
 | `backend/app/collector` (Phase 4+) | SQLAlchemy | Persist derived delay observations, enforce retention |
 | `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends |
 | Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, observations, aggregates |
-| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Static network explorer with a stop map (live vehicles in Phase 3, analytics in Phase 5) |
+| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Static network explorer drawing per-shape GTFS geometry (live vehicles in Phase 3, analytics in Phase 5) |
 | CI | GitHub Actions | Backend lint/tests and frontend typecheck/tests/build |
 
 ## Data flow
@@ -62,6 +62,9 @@ flowchart LR
 | GTFS times stored as both raw string and seconds | Supports scheduled times past `24:00:00` without losing the original value |
 | Geo search uses a bounding box | Adequate for "stops near me" at city scale; a spatial index can replace it later |
 | No database-level FKs between child tables | Keeps bulk inserts fast; referential integrity is enforced by the loader transaction |
+| One polyline per `shape_id`, never one per route | A route has many directions and branches (route 70 has 5 shapes); merging their stops produces meaningless straight lines across the map |
+| `stop_times` fallback labelled `approximate` | When `shapes.txt` is missing, trips are grouped by their exact ordered stop sequence, but the UI must state that these are not road geometry |
+| Shape lookups join `trips` instead of an `IN (subquery)` | Avoids scanning the ~1M-row `stop_times` table; route 70 geometry dropped from 4.2 s to 0.4 s |
 
 ## Local topology (Phase 0-5)
 

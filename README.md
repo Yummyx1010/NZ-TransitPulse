@@ -14,11 +14,12 @@ The project is developed in small, documented phases. See
 [`docs/ROADMAP.md`](docs/ROADMAP.md) for the phase plan and
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the contribution and commit convention.
 
-> **Current status: Phase 1 - Static Network Explorer.** Routes, stops, trips and
-> scheduled stop times can be imported from the official Auckland Transport GTFS
-> bundle into MySQL, queried through a documented REST API, and explored on a
-> React/Leaflet map. Realtime data, historical observations and analytics arrive in
-> later phases.
+> **Current status: Phase 1B - Static Network Explorer with route geometry.** Routes,
+> stops, trips, scheduled stop times and `shapes.txt` geometry are imported from the
+> official Auckland Transport GTFS bundle into MySQL and explored on a React/Leaflet
+> map. Each route pattern is drawn from its own real shape, never by connecting an
+> alphabetically sorted stop list. Realtime data, historical observations and analytics
+> arrive in later phases.
 
 ## Phase index
 
@@ -30,6 +31,7 @@ for a reviewer to see what is implemented and how it was verified.
 | --- | --- | --- | --- | --- |
 | 0 | Foundation: config, MySQL setup, API skeleton, CI | [docs/phases/PHASE-00-foundation.md](docs/phases/PHASE-00-foundation.md) | [docs/test-reports/PHASE-00.md](docs/test-reports/PHASE-00.md) | `phase-00` |
 | 1 | Static network explorer: GTFS import, network API, map UI | [docs/phases/PHASE-01-static-network-explorer.md](docs/phases/PHASE-01-static-network-explorer.md) | [docs/test-reports/PHASE-01.md](docs/test-reports/PHASE-01.md) | `phase-01` |
+| 1B | Route geometry fix: shapes.txt, per-shape drawing, ordered stops | [docs/phases/PHASE-01B-route-geometry.md](docs/phases/PHASE-01B-route-geometry.md) | [docs/test-reports/PHASE-01B.md](docs/test-reports/PHASE-01B.md) | — |
 | 2-7 | Realtime, passenger view, history, analytics, hardening, AWS | Planned | Planned | — |
 
 ## Technology
@@ -134,10 +136,12 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 
 1. Open `http://localhost:8000/docs` and try `GET /api/v1/network/status`.
 2. Open `http://localhost:5173` and search for a route (e.g. `18` or `Western`).
-3. Filter by mode (Bus / Rail / Ferry), select a route, and see its stops on the map.
+3. Filter by mode (Bus / Rail / Ferry), select a route (try `70`), and see its real
+   drawn geometry and ordered stops. If the route has several patterns, use the
+   `Route pattern` selector to switch direction or branch.
 4. Check the footer for the Auckland Transport CC BY 4.0 attribution.
 
-## API (Phase 1)
+## API (Phase 1 + 1B)
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -147,6 +151,7 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 | `GET` | `/api/v1/routes` | List/search routes (`q`, `mode`, `limit`, `offset`) |
 | `GET` | `/api/v1/routes/{route_id}` | Route detail and stop count |
 | `GET` | `/api/v1/routes/{route_id}/stops` | Stops served by a route |
+| `GET` | `/api/v1/routes/{route_id}/geometry` | Per-shape route geometry with ordered stops; `stop_times` fallback is marked `approximate` |
 | `GET` | `/api/v1/stops` | List/search stops (`q`, or `lat`+`lon`+`radius_m`) |
 | `GET` | `/api/v1/stops/{stop_id}` | Stop detail and routes serving it |
 

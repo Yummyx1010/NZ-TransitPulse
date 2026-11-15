@@ -11,17 +11,19 @@ import httpx
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import Session
 
-from ..models import Agency, GtfsFeed, Route, Stop, StopTime, Trip
+from ..models import Agency, GtfsFeed, Route, ShapePoint, Stop, StopTime, Trip
 from .parser import (
+    SHAPE_COLUMNS,
     FeedArchive,
     gtfs_time_to_seconds,
     parse_coordinate,
+    parse_float,
     parse_int,
     validate_archive,
 )
 
 BATCH_SIZE = 5000
-CHILD_MODELS = (Agency, Route, Stop, StopTime, Trip)
+CHILD_MODELS = (Agency, Route, Stop, StopTime, Trip, ShapePoint)
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,7 @@ class LoadResult:
     checksum: str
     counts: dict[str, int]
     skipped_stops: int = 0
+    skipped_shapes: int = 0
 
 
 def _optional(row: dict[str, str], key: str, limit: int) -> str | None:
@@ -151,6 +154,43 @@ def _stop_time_rows(archive: FeedArchive, feed_id: int) -> list[dict[str, object
     return rows
 
 
+def _shape_rows(
+    archive: FeedArchive, feed_id: int
+) -> tuple[list[dict[str, object]], int]:
+    """Parse shapes.txt, keeping only points with a valid id, sequence and position."""
+    source_rows = archive.rows("shapes.txt")
+    if source_rows and any(column not in source_rows[0] for column in SHAPE_COLUMNS):
+        return [], len(source_rows)
+
+    rows: list[dict[str, object]] = []
+    seen: set[tuple[str, int]] = set()
+    skipped = 0
+    for row in source_rows:
+        shape_id = row.get("shape_id", "").strip()
+        sequence = parse_int(row.get("shape_pt_sequence"))
+        lat = parse_coordinate(row.get("shape_pt_lat"), -90.0, 90.0)
+        lon = parse_coordinate(row.get("shape_pt_lon"), -180.0, 180.0)
+        if not shape_id or sequence is None or lat is None or lon is None:
+            skipped += 1
+            continue
+        key = (shape_id, sequence)
+        if key in seen:
+            skipped += 1
+            continue
+        seen.add(key)
+        rows.append(
+            {
+                "feed_id": feed_id,
+                "shape_id": shape_id[:64],
+                "shape_pt_sequence": sequence,
+                "lat": lat,
+                "lon": lon,
+                "dist_traveled": parse_float(row.get("shape_dist_traveled")),
+            }
+        )
+    return rows, skipped
+
+
 def _insert_batches(
     session: Session, model: type, rows: list[dict[str, object]]
 ) -> None:
@@ -165,6 +205,7 @@ def _counts_from_feed(feed: GtfsFeed) -> dict[str, int]:
         "stops": feed.stop_count,
         "trips": feed.trip_count,
         "stop_times": feed.stop_time_count,
+        "shape_points": feed.shape_point_count,
     }
 
 
@@ -187,12 +228,14 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
         feed_id = feed.id
 
         stop_rows, skipped = _stop_rows(archive, feed_id)
+        shape_rows, skipped_shapes = _shape_rows(archive, feed_id)
         table_rows: list[tuple[type, list[dict[str, object]]]] = [
             (Agency, _agency_rows(archive, feed_id)),
             (Route, _route_rows(archive, feed_id)),
             (Stop, stop_rows),
             (Trip, _trip_rows(archive, feed_id)),
             (StopTime, _stop_time_rows(archive, feed_id)),
+            (ShapePoint, shape_rows),
         ]
         for model, rows in table_rows:
             _insert_batches(session, model, rows)
@@ -202,6 +245,7 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
         feed.stop_count = len(stop_rows)
         feed.trip_count = len(table_rows[3][1])
         feed.stop_time_count = len(table_rows[4][1])
+        feed.shape_point_count = len(shape_rows)
 
         session.execute(update(GtfsFeed).values(is_active=False))
         feed.is_active = True
@@ -218,6 +262,7 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
         checksum=archive.checksum,
         counts=_counts_from_feed(feed),
         skipped_stops=skipped,
+        skipped_shapes=skipped_shapes,
     )
 
 

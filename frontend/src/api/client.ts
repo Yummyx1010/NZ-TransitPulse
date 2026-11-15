@@ -1,6 +1,7 @@
 import type {
   NetworkStatus,
   Paginated,
+  RouteGeometry,
   RouteQuery,
   RouteSummary,
   StopSummary,
@@ -32,6 +33,10 @@ export const api = {
   routeStops: (routeId: string) =>
     fetchJson<Paginated<StopSummary>>(
       `/routes/${encodeURIComponent(routeId)}/stops`,
+    ),
+  routeGeometry: (routeId: string) =>
+    fetchJson<RouteGeometry>(
+      `/routes/${encodeURIComponent(routeId)}/geometry`,
     ),
   stops: (q?: string) =>
     fetchJson<Paginated<StopSummary>>(
