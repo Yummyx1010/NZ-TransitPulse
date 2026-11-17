@@ -1,15 +1,17 @@
 # Data Sources and Compliance
 
-Verified against Auckland Transport (AT) public documentation on 2026-11-14.
-Re-check these pages before enabling the historical collector in Phase 4.
+Verified against Auckland Transport (AT) public documentation on 2026-11-14 and live
+API responses on 2026-11-15. Re-check these pages before enabling the historical
+collector in Phase 4.
 
 ## Sources
 
 | Source | Used for | Format | Access |
 | --- | --- | --- | --- |
-| AT GTFS static bundle (`agency`, `routes`, `stops`, `trips`, `stop_times`; plus `calendar`, `shapes` and others) | Phase 1 network explorer, schedule baseline for delay calculations | GTFS zip (CSV) | Public download, no key required |
-| AT GTFS-Realtime: Vehicle Positions | Phase 2 realtime API, Phase 3 live map | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
-| AT GTFS-Realtime: Trip Updates | Phase 2/3 ETAs, Phase 4/5 delay observations | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
+| AT GTFS static bundle (`agency`, `routes`, `stops`, `trips`, `stop_times`, `shapes`; plus `calendar` and others) | Phase 1 network explorer and route geometry, schedule baseline for delay calculations | GTFS zip (CSV) | Public download, no key required |
+| AT aggregated GTFS-Realtime (`realtime/legacy`) | Phase 2: vehicles, trip updates and alerts in one call | GTFS-RT JSON, wrapped in `status/response` envelope | Developer portal subscription key |
+| AT GTFS-Realtime: Vehicle Positions | Live positions on the map; separate endpoint kept as optional fallback | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
+| AT GTFS-Realtime: Trip Updates | Phase 3 ETAs, Phase 4/5 delay observations | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
 | AT GTFS-Realtime: Service Alerts | Phase 3 disruption panel | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
 
 ### References
@@ -44,13 +46,27 @@ Re-check these pages before enabling the historical collector in Phase 4.
   opaque and must not be used to infer routes.
 - Service alerts may contain `null` values inside `active_period` where the GTFS-RT
   specification expects omitted fields. Parsers must tolerate this.
-- A third-party API directory reports a quota of roughly 600 calls/minute and 35,000
-  calls/week. **Verify the actual quota in your own portal subscription** before
-  choosing a polling cadence. At one aggregated call per 30 seconds the budget is about
-  2,880 calls/day (20,160/week), which leaves comfortable headroom.
-- Exact endpoint paths differ between the legacy GTFS-RT endpoints and the newer
-  "Realtime Compat" API. Confirm the paths attached to your subscription and configure
-  them with `TP_AT_*_URL`; do not hard-code them in source code.
+- The subscription quota is **600 calls/minute up to a maximum of 35,000 calls/week**
+  (confirmed in the AT developer portal). The weekly cap is the binding constraint:
+  35,000/week = 5,000/day ≈ 3.47 calls/minute. Polling all three separate feeds every
+  30 seconds would be 6 calls/min (60,480/week) and would exceed it.
+- The **aggregated endpoint** `https://api.at.govt.nz/realtime/legacy` (verified
+  2026-11-15) returns Vehicle Positions, Trip Updates and Service Alerts in one
+  response (~3,168 entities). Phase 2 polls it once every 30 seconds: 2,880 calls/day
+  = 20,160/week (58% of the quota). A rolling seven-day call counter reserves 10% of
+  the budget for retries and halves the polling rate once 80% has been used.
+- The three separate legacy endpoints (`.../vehiclelocations`, `.../tripupdates`,
+  `.../servicealerts`) remain as an optional per-feed fallback. The `v2/gtfs/*` and
+  "Realtime Compat" paths returned 404 for this subscription.
+- AT wraps the standard GTFS-RT message in
+  `{"status": "OK", "response": {"header", "entity"}, "error": null}` with
+  `header.incrementality = 0` (full snapshot). Repeated fields with a single element
+  (for example `stop_time_update`) are serialised as an object instead of an array;
+  `active_period` entries may contain `null` `start`/`end`; `bearing` may be a string;
+  many vehicle entities have no `trip` descriptor. The decoder tolerates all of these.
+- Confirm the paths attached to your own subscription and configure them with
+  `TP_AT_REALTIME_URL` (aggregated) or the optional `TP_AT_*_URL` values; do not
+  hard-code subscription-specific paths in source code.
 
 ## Compliance decisions for "permitted historical observations"
 

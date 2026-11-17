@@ -19,19 +19,20 @@ The MVP is reached at the end of **Phase 5**. AWS deployment is deliberately pos
 | --- | --- | --- | --- | --- |
 | 0 | Foundation | Local development environment and project conventions | Repo layout, docs, config, MySQL container, FastAPI skeleton, CI, health/meta endpoints, first test report |  |
 | 1 | Static network explorer | Browse Auckland routes, stops and timetables | GTFS static loader, MySQL schema + migrations, routes/stops/trips API, React map and search |  |
-| 2 | Realtime ingestion | Live vehicles, trip updates and service alerts available in the API | AT API client (auth, retry, rate limiting), GTFS-RT decoding, scheduled poller, in-memory snapshot, realtime endpoints |  |
-| 3 | Passenger view | A passenger can answer "where is it, when does it arrive, is it delayed?" | Stop/route pages, ETA list, live map, delay status, service alerts panel |  |
+| 2 | Realtime ingestion | Live vehicles, trip updates and service alerts in the API **and on the map** | Aggregated AT client (auth, retry, quota budget), tolerant GTFS-RT decoder, 30 s poller, in-memory snapshot, realtime endpoints, live vehicle markers |  |
+| 3 | Passenger view | A passenger can answer "where is it, when does it arrive, is it delayed?" | Stop/route pages, ETA list, delay status, service alerts panel |  |
 | 4 | Historical observations | Permitted, auditable history collection | Compliance and retention notes, observation schema, collector worker, data quality checks, backfill from recorded snapshots |  |
 | 5 | Reliability analytics | MVP: a modern dashboard answering the analytics questions | Punctuality / OTP metrics, worst-route ranking, time-of-day heatmap, trend charts, filters, full docs and test suite | ✅ |
 | 6 | Hardening | Production readiness before cloud deployment | Caching, observability (metrics/logs/traces), error budgets, security review, load tests, runbook |  |
 | 7 | AWS deployment | Runs on AWS | RDS MySQL, ECS Fargate, ALB, S3 + CloudFront, Secrets Manager, IaC, deployment runbook |  |
 
-**Status (2026-11-15):** Phase 0, Phase 1 and the Phase 1B route-geometry fix are
-complete and verified; Phase 2 (GTFS-Realtime ingestion) is next. Phase 1 added the
-MySQL schema and Alembic migrations, the GTFS static loader CLI, six read-only network
-endpoints, and the React network explorer. Phase 1B imported `shapes.txt`, added the
-per-shape geometry endpoint, and replaced the straight-line stop map with real route
-geometry (see `docs/phases/PHASE-01B-route-geometry.md`).
+**Status (2026-11-15):** Phase 0, Phase 1, the Phase 1B route-geometry fix and
+**Phase 2 (realtime ingestion with live vehicle positions)** are complete and verified;
+Phase 3 (ETA / passenger view) is next. Phase 1B imported `shapes.txt` and replaced the
+straight-line stop map with real route geometry. Phase 2 added the aggregated AT
+GTFS-Realtime client, a quota-aware 30 s poller, an in-memory snapshot, four realtime
+endpoints, bus glyph markers and direction-scoped vehicles (only the selected
+outbound/inbound pattern's buses are drawn). See `docs/phases/PHASE-02-realtime-ingestion.md`.
 
 ## Phase dependencies
 

@@ -14,12 +14,14 @@ The project is developed in small, documented phases. See
 [`docs/ROADMAP.md`](docs/ROADMAP.md) for the phase plan and
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the contribution and commit convention.
 
-> **Current status: Phase 1B - Static Network Explorer with route geometry.** Routes,
-> stops, trips, scheduled stop times and `shapes.txt` geometry are imported from the
-> official Auckland Transport GTFS bundle into MySQL and explored on a React/Leaflet
-> map. Each route pattern is drawn from its own real shape, never by connecting an
-> alphabetically sorted stop list. Realtime data, historical observations and analytics
-> arrive in later phases.
+> **Current status: Phase 2 - Live buses on the map.** Routes, stops, trips, scheduled
+> stop times and `shapes.txt` geometry are imported from the official Auckland Transport
+> GTFS bundle into MySQL and explored on a React/Leaflet map. The aggregated AT
+> GTFS-Realtime feed is polled every 30 seconds and held in memory; **live bus positions
+> are drawn as small heading-aware bus icons** alongside real route geometry. Trains and
+> ferries are filtered out, the map auto-fits the selected route, and choosing a route
+> pattern (outbound/inbound) shows only the buses running that pattern. Historical
+> observations, reliability analytics and ETAs arrive in later phases.
 
 ## Phase index
 
@@ -32,7 +34,8 @@ for a reviewer to see what is implemented and how it was verified.
 | 0 | Foundation: config, MySQL setup, API skeleton, CI | [docs/phases/PHASE-00-foundation.md](docs/phases/PHASE-00-foundation.md) | [docs/test-reports/PHASE-00.md](docs/test-reports/PHASE-00.md) | `phase-00` |
 | 1 | Static network explorer: GTFS import, network API, map UI | [docs/phases/PHASE-01-static-network-explorer.md](docs/phases/PHASE-01-static-network-explorer.md) | [docs/test-reports/PHASE-01.md](docs/test-reports/PHASE-01.md) | `phase-01` |
 | 1B | Route geometry fix: shapes.txt, per-shape drawing, ordered stops | [docs/phases/PHASE-01B-route-geometry.md](docs/phases/PHASE-01B-route-geometry.md) | [docs/test-reports/PHASE-01B.md](docs/test-reports/PHASE-01B.md) | — |
-| 2-7 | Realtime, passenger view, history, analytics, hardening, AWS | Planned | Planned | — |
+| 2 | Realtime ingestion: aggregated GTFS-RT, bus-only live map, direction-scoped vehicles, quota-aware poller | [docs/phases/PHASE-02-realtime-ingestion.md](docs/phases/PHASE-02-realtime-ingestion.md) | [docs/test-reports/PHASE-02.md](docs/test-reports/PHASE-02.md) | — |
+| 3-7 | Passenger view, history, analytics, hardening, AWS | Planned | Planned | — |
 
 ## Technology
 
@@ -59,8 +62,10 @@ MySQL.
 copy .env.example .env
 ```
 
-Edit `.env` so `TP_DATABASE_URL` matches your local MySQL user. AT API credentials
-are not needed until Phase 2.
+Edit `.env` so `TP_DATABASE_URL` matches your local MySQL user, and set
+`TP_AT_API_KEY` to your Auckland Transport developer portal subscription key. Keep
+`TP_AT_REALTIME_URL` at its default aggregated endpoint. Without a key the static
+network explorer still works; the live bar explains that realtime is not configured.
 
 ### 2. One-time SQL in DataGrip (the only manual SQL)
 
@@ -137,11 +142,16 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 1. Open `http://localhost:8000/docs` and try `GET /api/v1/network/status`.
 2. Open `http://localhost:5173` and search for a route (e.g. `18` or `Western`).
 3. Filter by mode (Bus / Rail / Ferry), select a route (try `70`), and see its real
-   drawn geometry and ordered stops. If the route has several patterns, use the
-   `Route pattern` selector to switch direction or branch.
-4. Check the footer for the Auckland Transport CC BY 4.0 attribution.
+   drawn geometry, ordered stops and the buses serving that route. The map automatically
+   fits the selected route; `Fit to view` re-centres it at any time. If the route has
+   several patterns, use the `Route pattern` selector to switch direction (`D0`/`D1`) or
+   branch — the buses shown are re-filtered to that pattern's trips only.
+4. Orange bus icons show heading and can be hidden with `Show live buses`; the live bar
+   reports the feed timestamp and weekly API quota usage. Trains and ferries are not
+   drawn.
+5. Check the footer for the Auckland Transport CC BY 4.0 attribution.
 
-## API (Phase 1 + 1B)
+## API (Phase 1 + 1B + 2)
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -154,6 +164,10 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 | `GET` | `/api/v1/routes/{route_id}/geometry` | Per-shape route geometry with ordered stops; `stop_times` fallback is marked `approximate` |
 | `GET` | `/api/v1/stops` | List/search stops (`q`, or `lat`+`lon`+`radius_m`) |
 | `GET` | `/api/v1/stops/{stop_id}` | Stop detail and routes serving it |
+| `GET` | `/api/v1/realtime/status` | Poller health, entity counts, weekly quota usage |
+| `GET` | `/api/v1/realtime/vehicles` | Live vehicle positions (`mode=Bus`, `route_id`, `shape_id`, `bbox`, `limit`) |
+| `GET` | `/api/v1/realtime/trip-updates` | Live trip delays and stop-time predictions |
+| `GET` | `/api/v1/realtime/alerts` | Service alerts |
 
 ## Documentation
 

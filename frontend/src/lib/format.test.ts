@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { displayRouteName, displayStopName, formatCoordinate, modeClass } from "./format";
+import {
+  displayRouteName,
+  displayStopName,
+  formatCoordinate,
+  formatFeedTime,
+  modeClass,
+} from "./format";
 import type { RouteSummary, StopSummary } from "../api/types";
 
 const route: RouteSummary = {
@@ -37,5 +43,13 @@ describe("formatting helpers", () => {
     expect(formatCoordinate(-36.8443)).toBe("-36.84430");
     expect(modeClass("Ferry")).toBe("badge badge-ferry");
     expect(modeClass("Light Rail")).toBe("badge badge-light-rail");
+  });
+
+  it("formats feed timestamps in Auckland time", () => {
+    expect(formatFeedTime(null)).toBe("No feed yet");
+    expect(formatFeedTime(undefined)).toBe("No feed yet");
+    const formatted = formatFeedTime(1794707735);
+    expect(formatted).not.toBe("No feed yet");
+    expect(formatted.length).toBeGreaterThan(0);
   });
 });

@@ -37,10 +37,24 @@ class Settings(BaseSettings):
 
     at_api_base_url: str = "https://api.at.govt.nz"
     at_api_key: str = ""
+    # Aggregated GTFS-Realtime feed: one call returns vehicles, trip updates and alerts.
+    at_realtime_url: str = "https://api.at.govt.nz/realtime/legacy"
+    # Kept for an optional per-feed mode; the aggregated endpoint is the Phase 2 default.
     at_vehicle_positions_url: str = ""
     at_trip_updates_url: str = ""
     at_service_alerts_url: str = ""
     at_realtime_poll_seconds: int = AT_MIN_POLL_SECONDS
+    at_realtime_timeout_seconds: float = 15.0
+    at_realtime_max_retries: int = 3
+    at_max_calls_per_week: int = 35000
+    at_realtime_auto_start: bool = True
+
+    @field_validator("at_max_calls_per_week")
+    @classmethod
+    def validate_quota(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("at_max_calls_per_week must be positive")
+        return value
 
     @field_validator("at_realtime_poll_seconds")
     @classmethod
@@ -60,12 +74,16 @@ class Settings(BaseSettings):
 
     @property
     def realtime_configured(self) -> bool:
-        """True only when realtime ingestion can actually run."""
-        return bool(
-            self.at_api_key
-            and self.at_vehicle_positions_url
-            and self.at_trip_updates_url
-            and self.at_service_alerts_url
+        """True when the aggregated realtime feed can be polled."""
+        return bool(self.at_api_key and self.at_realtime_url)
+
+    @property
+    def realtime_polling_enabled(self) -> bool:
+        """Never start a live poller in unit tests or with missing credentials."""
+        return (
+            self.realtime_configured
+            and self.at_realtime_auto_start
+            and self.environment != "test"
         )
 
 

@@ -22,7 +22,7 @@ flowchart LR
 | `backend/app/cli/gtfs.py` | argparse, Alembic | `migrate`, `check-db`, `load`, `status` commands |
 | `backend/app/models` | SQLAlchemy 2 ORM | GTFS static tables keyed by `feed_id` |
 | `backend/migrations` | Alembic | Versioned MySQL schema |
-| `backend/app/ingestion` (Phase 2+) | `httpx`, scheduled worker | Poll AT feeds, decode GTFS-RT, publish snapshot |
+| `backend/app/ingestion` | `httpx`, threading | Aggregated AT client, decoder, in-memory snapshot and 30 s poller |
 | `backend/app/collector` (Phase 4+) | SQLAlchemy | Persist derived delay observations, enforce retention |
 | `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends |
 | Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, observations, aggregates |
@@ -34,11 +34,12 @@ flowchart LR
 1. **Static load** (Phase 1): download the AT GTFS zip, validate it, load routes/stops/
    trips/stop_times/shapes into MySQL with a feed version marker. Runs on demand, then
    on a schedule.
-2. **Realtime poll** (Phase 2): one poll per configured interval (minimum 30 s) fetches
-   vehicle positions, trip updates and alerts. The response is decoded into a typed
-   snapshot and cached in memory for low-latency reads.
-3. **Passenger reads** (Phase 3): the browser calls the API for stop arrivals and live
-   vehicles; the API joins the realtime snapshot with the static schedule.
+2. **Realtime poll** (Phase 2): one **aggregated** AT call every 30 s returns vehicle
+   positions, trip updates and service alerts. The response is decoded into a typed
+   snapshot held in memory (raw payloads are never persisted). The API joins it with
+   MySQL route labels and overlays live vehicle markers on the map.
+3. **Passenger reads** (Phase 3): the browser calls the API for stop arrivals, ETAs and
+   delay status; the API joins the realtime snapshot with the static schedule.
 4. **Observation collection** (Phase 4): each poll writes compact derived delay records.
    Data quality checks reject impossible values and duplicates.
 5. **Analytics** (Phase 5): scheduled aggregation produces daily/hourly reliability
@@ -65,6 +66,14 @@ flowchart LR
 | One polyline per `shape_id`, never one per route | A route has many directions and branches (route 70 has 5 shapes); merging their stops produces meaningless straight lines across the map |
 | `stop_times` fallback labelled `approximate` | When `shapes.txt` is missing, trips are grouped by their exact ordered stop sequence, but the UI must state that these are not road geometry |
 | Shape lookups join `trips` instead of an `IN (subquery)` | Avoids scanning the ~1M-row `stop_times` table; route 70 geometry dropped from 4.2 s to 0.4 s |
+| One aggregated realtime call, not three separate feeds | 30 s polling stays at 20,160 calls/week (58% of the 35,000 quota); three feeds would be 60,480/week |
+| Realtime state only in memory | Feed frames expire every 30 s; writing them to MySQL would add load without analytical value. History begins in Phase 4 with derived observations |
+| Rolling 7-day call budget with reserve and backoff | Protects the weekly quota during retries/outages; CI and unit tests never use the live subscription key |
+| Static route labels are a best-effort join | A MySQL outage must not take down live vehicle positions, so realtime endpoints degrade to unlabelled markers |
+| Bus-only map, filtered server-side | The product focuses on buses; the browser never downloads train/ferry positions it will not draw. Vehicles whose mode cannot be confirmed are excluded |
+| Bus glyphs instead of dots | A small SVG bus rotated to the reported bearing is recognisable at a glance and conveys direction; icons are cached per 15-degree bucket |
+| Bounds follow the selected shape | Choosing a route must frame that route automatically, with `invalidateSize` before fitting and a manual `Fit to view` escape hatch |
+| A pattern scopes its vehicles | `shape_id` -> `trips.trip_id` -> live vehicle `trip_id`. Outbound and inbound buses must not be mixed when one direction is selected; a failed static lookup degrades to unfiltered buses rather than an empty map |
 
 ## Local topology (Phase 0-5)
 

@@ -65,3 +65,50 @@ export interface RouteGeometry {
   shape_count: number;
   shapes: ShapeGeometry[];
 }
+
+export interface RealtimeVehicle {
+  vehicle_id: string;
+  lat: number;
+  lon: number;
+  bearing: number | null;
+  speed: number | null;
+  route_id: string | null;
+  route_short_name: string | null;
+  mode: string | null;
+  trip_id: string | null;
+  timestamp: number | null;
+}
+
+export interface RealtimeVehicleList {
+  items: RealtimeVehicle[];
+  total: number;
+  limit: number;
+}
+
+export interface RealtimeVehicleQuery {
+  route_id?: string;
+  mode?: string;
+  shape_id?: string;
+  bbox?: string;
+  limit?: number;
+}
+
+export interface RealtimeStatus {
+  configured: boolean;
+  polling: boolean;
+  has_data: boolean;
+  last_success_at: string | null;
+  feed_timestamp: number | null;
+  vehicle_count: number;
+  trip_update_count: number;
+  alert_count: number;
+  successful_polls: number;
+  failed_polls: number;
+  last_error: string | null;
+  poll_seconds: number;
+  calls_last_7_days: number;
+  weekly_quota: number;
+  quota_remaining: number;
+  source: string;
+  attribution: string;
+}

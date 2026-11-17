@@ -20,3 +20,13 @@ export function formatCoordinate(value: number): string {
 export function modeClass(mode: string): string {
   return `badge badge-${mode.toLowerCase().replace(/\s+/g, "-")}`;
 }
+
+export function formatFeedTime(timestamp: number | null | undefined): string {
+  if (!timestamp) return "No feed yet";
+  return new Date(timestamp * 1000).toLocaleTimeString("en-NZ", {
+    timeZone: "Pacific/Auckland",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}

@@ -65,6 +65,95 @@ BASE_TABLES: dict[str, str] = {
 }
 
 
+def build_realtime_payload() -> dict:
+    """Synthetic AT aggregated feed covering the field quirks seen in production."""
+    return {
+        "status": "OK",
+        "response": {
+            "header": {
+                "timestamp": 1794707735.359,
+                "gtfs_realtime_version": "1.0",
+                "incrementality": 0,
+            },
+            "entity": [
+                {
+                    "id": "v1",
+                    "is_deleted": False,
+                    "vehicle": {
+                        "position": {
+                            "latitude": -36.8443,
+                            "longitude": 174.767,
+                            "bearing": "286",
+                            "speed": 0,
+                        },
+                        "timestamp": 1794707698,
+                        "vehicle": {"id": "BUS1", "label": "", "license_plate": ""},
+                        "trip": {"trip_id": "T1", "route_id": "70-205", "direction_id": 0},
+                    },
+                },
+                {
+                    "id": "v2",
+                    "vehicle": {
+                        "position": {"latitude": -36.871, "longitude": 174.777},
+                        "vehicle": {"id": "BUS2"},
+                        "trip": {"trip_id": "T2"},
+                    },
+                },
+                {
+                    "id": "v3",
+                    "is_deleted": True,
+                    "vehicle": {
+                        "position": {"latitude": -36.9, "longitude": 174.8},
+                        "vehicle": {"id": "BUS3"},
+                    },
+                },
+                {
+                    "id": "t1",
+                    "trip_update": {
+                        "trip": {"trip_id": "T1", "route_id": "70-205", "start_date": "20261115"},
+                        "timestamp": 1794707700,
+                        "delay": -30,
+                        "stop_time_update": {
+                            "stop_sequence": 1,
+                            "stop_id": "9103-0e65d9b8",
+                            "arrival": {"delay": -30, "time": 1794732060},
+                            "departure": {"delay": -20, "time": 1794732070},
+                        },
+                    },
+                },
+                {
+                    "id": "t2",
+                    "trip_update": {
+                        "trip": {"trip_id": "T2", "route_id": "WEST-201"},
+                        "delay": 120,
+                        "stop_time_update": [
+                            {"stop_sequence": 1, "stop_id": "S2", "arrival": {"delay": 120}},
+                            {"stop_sequence": 2, "stop_id": "S1", "arrival": {"delay": 150}},
+                        ],
+                    },
+                },
+                {
+                    "id": "a1",
+                    "alert": {
+                        "cause": "CONSTRUCTION",
+                        "effect": "STOP_MOVED",
+                        "header_text": {
+                            "translation": [{"text": "Stops skipped: Route 313", "language": "en"}]
+                        },
+                        "description_text": {
+                            "translation": [{"text": "Bus stop moved", "language": "en"}]
+                        },
+                        "active_period": [{"start": 1795258800, "end": None}],
+                        "informed_entity": [{"route_id": "70-205"}],
+                    },
+                    "timestamp": 1794707700,
+                },
+            ],
+        },
+        "error": None,
+    }
+
+
 def build_fixture_zip(
     *,
     overrides: dict[str, str] | None = None,

@@ -36,20 +36,30 @@ def test_cors_origins_are_split_and_trimmed() -> None:
     ]
 
 
-def test_realtime_requires_key_and_all_three_feed_urls() -> None:
-    partial = _test_settings(
-        at_api_key="test-key",
-        at_vehicle_positions_url="https://example.invalid/vehicles",
-    )
-    complete = _test_settings(
-        at_api_key="test-key",
-        at_vehicle_positions_url="https://example.invalid/vehicles",
-        at_trip_updates_url="https://example.invalid/trips",
-        at_service_alerts_url="https://example.invalid/alerts",
+def test_realtime_readiness_requires_a_key_and_the_aggregated_url() -> None:
+    without_key = _test_settings(at_api_key="")
+    without_url = _test_settings(at_api_key="test-key", at_realtime_url="")
+    ready = _test_settings(at_api_key="test-key")
+
+    assert without_key.realtime_configured is False
+    assert without_url.realtime_configured is False
+    assert ready.realtime_configured is True
+    assert ready.realtime_polling_enabled is False
+
+
+def test_polling_is_enabled_only_outside_tests_with_credentials() -> None:
+    local = _test_settings(environment="local", at_api_key="test-key")
+    disabled = _test_settings(
+        environment="local", at_api_key="test-key", at_realtime_auto_start=False
     )
 
-    assert partial.realtime_configured is False
-    assert complete.realtime_configured is True
+    assert local.realtime_polling_enabled is True
+    assert disabled.realtime_polling_enabled is False
+
+
+def test_weekly_quota_must_be_positive() -> None:
+    with pytest.raises(ValidationError, match="must be positive"):
+        _test_settings(at_max_calls_per_week=0)
 
 
 def test_poll_interval_below_feed_refresh_rate_is_rejected() -> None:

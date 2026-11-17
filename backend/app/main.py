@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,7 +11,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .api.network import create_network_router
 from .api.ops import create_ops_router
+from .api.realtime import create_realtime_router
 from .core.config import Settings, get_settings
+from .ingestion.client import ATRealtimeClient, CallBudget
+from .ingestion.poller import RealtimePoller
+from .ingestion.snapshot import SnapshotStore
 
 DESCRIPTION = (
     "Public transport monitoring and analytics for Auckland, New Zealand. "
@@ -22,12 +28,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Application factory; passing settings explicitly keeps tests deterministic."""
     active_settings = settings or get_settings()
 
+    store = SnapshotStore()
+    budget = CallBudget(active_settings.at_max_calls_per_week)
+    client = ATRealtimeClient(active_settings, budget=budget)
+    poller = RealtimePoller(client, store, active_settings.at_realtime_poll_seconds)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        if active_settings.realtime_polling_enabled:
+            poller.start()
+        try:
+            yield
+        finally:
+            poller.stop()
+            client.close()
+
     app = FastAPI(
         title=active_settings.app_name,
         version="0.1.0",
         description=DESCRIPTION,
         docs_url="/docs",
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
     app.add_middleware(
         CORSMiddleware,
@@ -36,6 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET"],
         allow_headers=["*"],
     )
+
     @app.exception_handler(SQLAlchemyError)
     async def database_unavailable(
         request: Request, exc: SQLAlchemyError
@@ -43,8 +66,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse(status_code=503, content={"detail": "Database unavailable"})
 
     app.state.settings = active_settings
+    app.state.realtime_store = store
+    app.state.realtime_budget = budget
+    app.state.realtime_poller = poller
     app.include_router(create_ops_router(active_settings))
     app.include_router(create_network_router(active_settings))
+    app.include_router(create_realtime_router(active_settings, store, budget, poller))
     return app
 
 

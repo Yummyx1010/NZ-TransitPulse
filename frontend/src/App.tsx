@@ -5,13 +5,15 @@ import { api } from "./api/client";
 import { Attribution } from "./components/Attribution";
 import { RouteExplorer } from "./components/RouteExplorer";
 import { StopMap } from "./components/StopMap";
-import { displayRouteName, displayStopName } from "./lib/format";
+import { displayRouteName, displayStopName, formatFeedTime } from "./lib/format";
 
 export default function App() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [showVehicles, setShowVehicles] = useState(true);
+  const [fitSignal, setFitSignal] = useState(0);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -36,15 +38,44 @@ export default function App() {
     queryFn: () => api.routeGeometry(selectedRouteId ?? ""),
     enabled: selectedRouteId !== null,
   });
-
-  const routes = routesQuery.data?.items ?? [];
+  const realtimeStatusQuery = useQuery({
+    queryKey: ["realtime-status"],
+    queryFn: () => api.realtimeStatus(),
+    refetchInterval: 15_000,
+    retry: 1,
+  });
   const geometry = geometryQuery.data ?? null;
-  const selectedRoute = routes.find((route) => route.route_id === selectedRouteId) ?? null;
   const shape =
     geometry?.shapes.find((item) => item.shape_id === selectedShapeId) ??
     geometry?.shapes[0] ??
     null;
+  // Only real GTFS shapes map to static trips; the stop_times fallback has no shape id.
+  const shapeFilter =
+    geometry?.source === "shapes" ? (shape?.shape_id ?? undefined) : undefined;
+  const vehiclesQuery = useQuery({
+    queryKey: ["realtime-vehicles", selectedRouteId, shapeFilter],
+    queryFn: () =>
+      api.realtimeVehicles({
+        mode: "Bus",
+        route_id: selectedRouteId ?? undefined,
+        shape_id: shapeFilter,
+        limit: 1000,
+      }),
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+
+  const routes = routesQuery.data?.items ?? [];
+  const realtimeStatus = realtimeStatusQuery.data ?? null;
+  const vehicles = showVehicles ? (vehiclesQuery.data?.items ?? []) : [];
+  const selectedRoute = routes.find((route) => route.route_id === selectedRouteId) ?? null;
   const orderedStops = shape?.stops ?? [];
+
+  useEffect(() => {
+    // Re-fit once the new route's geometry (or a different pattern) has arrived.
+    setFitSignal((value) => value + 1);
+  }, [geometry?.route_id, shape?.shape_id]);
+
   const hasData = statusQuery.data?.has_data ?? false;
   const statusLabel = statusQuery.isError
     ? "API offline"
@@ -64,6 +95,38 @@ export default function App() {
           {statusLabel}
         </span>
       </header>
+
+      <div className="realtime-bar" role="status">
+        <span className={`live-dot${realtimeStatus?.has_data ? " is-live" : ""}`} />
+        <div className="realtime-summary">
+          <strong>Live buses</strong>
+          {realtimeStatus ? (
+            <span>
+              {vehicles.length} shown · {realtimeStatus.vehicle_count} vehicles in feed (all modes) ·
+              updated {formatFeedTime(realtimeStatus.feed_timestamp)} ·{" "}
+              {realtimeStatus.calls_last_7_days}/{realtimeStatus.weekly_quota} API calls this week
+            </span>
+          ) : (
+            <span>Realtime status unavailable</span>
+          )}
+          {realtimeStatus && !realtimeStatus.configured ? (
+            <span className="realtime-error">
+              Set TP_AT_API_KEY in .env to enable live vehicles.
+            </span>
+          ) : null}
+          {realtimeStatus?.last_error ? (
+            <span className="realtime-error">Feed error: {realtimeStatus.last_error}</span>
+          ) : null}
+        </div>
+        <label className="realtime-toggle">
+          <input
+            type="checkbox"
+            checked={showVehicles}
+            onChange={(event) => setShowVehicles(event.target.checked)}
+          />
+          Show live buses
+        </label>
+      </div>
 
       {!hasData && !statusQuery.isLoading ? (
         <div className="notice" role="alert">
@@ -96,39 +159,52 @@ export default function App() {
                   {selectedRoute.mode} route · {orderedStops.length} stop
                   {orderedStops.length === 1 ? "" : "s"} shown
                   {geometry ? ` · ${geometry.shape_count} route pattern${geometry.shape_count === 1 ? "" : "s"}` : ""}
+                  {shapeFilter ? " · buses on this pattern only" : ""}
                 </p>
               ) : (
-                <p className="muted">Choose a route to see its geometry on the map.</p>
+                <p className="muted">Choose a route to see its geometry, or view all live vehicles.</p>
               )}
             </div>
-            {geometry && geometry.shapes.length > 1 ? (
-              <label className="shape-select">
-                <span>Route pattern</span>
-                <select
-                  aria-label="Route pattern"
-                  value={shape?.shape_id ?? ""}
-                  onChange={(event) => setSelectedShapeId(event.target.value)}
-                >
-                  {geometry.shapes.map((item) => (
-                    <option key={item.shape_id} value={item.shape_id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
+            <div className="heading-actions">
+              {geometry && geometry.shapes.length > 1 ? (
+                <label className="shape-select">
+                  <span>Route pattern</span>
+                  <select
+                    aria-label="Route pattern"
+                    value={shape?.shape_id ?? ""}
+                    onChange={(event) => setSelectedShapeId(event.target.value)}
+                  >
+                    {geometry.shapes.map((item) => (
+                      <option key={item.shape_id} value={item.shape_id}>
+                        {item.label}
+                        {item.direction_id !== null ? ` · D${item.direction_id}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <button
+                type="button"
+                className="fit-button"
+                onClick={() => setFitSignal((value) => value + 1)}
+              >
+                Fit to view
+              </button>
+            </div>
           </div>
 
           <StopMap
             shape={shape}
+            vehicles={vehicles}
             approximate={geometry?.approximate ?? false}
             note={geometry?.note ?? ""}
+            fitSignal={fitSignal}
             emptyMessage={
               geometryQuery.isLoading
                 ? "Loading route geometry..."
                 : selectedRoute
-                  ? "No geometry available for this route."
-                  : "Select a route to see its geometry on the map."
+                  ? "No geometry or vehicles available for this route."
+                  : "Waiting for live vehicle positions..."
             }
           />
 
