@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  delayStatusClass,
   displayRouteName,
   displayStopName,
   formatCoordinate,
+  formatDelay,
   formatFeedTime,
+  formatMinutesAway,
   modeClass,
 } from "./format";
 import type { RouteSummary, StopSummary } from "../api/types";
@@ -39,10 +42,9 @@ describe("formatting helpers", () => {
     expect(displayStopName({ ...stop, code: null })).toBe("Britomart");
   });
 
-  it("formats coordinates and mode classes", () => {
+  it("formats coordinates and the bus mode class", () => {
     expect(formatCoordinate(-36.8443)).toBe("-36.84430");
-    expect(modeClass("Ferry")).toBe("badge badge-ferry");
-    expect(modeClass("Light Rail")).toBe("badge badge-light-rail");
+    expect(modeClass("Bus")).toBe("badge badge-bus");
   });
 
   it("formats feed timestamps in Auckland time", () => {
@@ -51,5 +53,16 @@ describe("formatting helpers", () => {
     const formatted = formatFeedTime(1794707735);
     expect(formatted).not.toBe("No feed yet");
     expect(formatted.length).toBeGreaterThan(0);
+  });
+
+  it("formats ETA minutes, delays and status classes", () => {
+    expect(formatMinutesAway(0)).toBe("Due");
+    expect(formatMinutesAway(17)).toBe("17 min");
+    expect(formatDelay(120)).toBe("+2 min");
+    expect(formatDelay(-120)).toBe("-2 min");
+    expect(formatDelay(0)).toBe("On time");
+    expect(formatDelay(null)).toBe("timetable only");
+    expect(delayStatusClass("On time")).toBe("delay-badge delay-on-time");
+    expect(delayStatusClass("Delayed")).toBe("delay-badge delay-delayed");
   });
 });

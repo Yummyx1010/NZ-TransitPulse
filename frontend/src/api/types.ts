@@ -93,6 +93,64 @@ export interface RealtimeVehicleQuery {
   limit?: number;
 }
 
+export interface ArrivalItem {
+  trip_id: string;
+  route_id: string;
+  route_short_name: string;
+  headsign: string | null;
+  direction_id: number | null;
+  scheduled_seconds: number;
+  scheduled_time: string;
+  predicted_seconds: number | null;
+  predicted_time: string | null;
+  delay_seconds: number | null;
+  minutes_away: number;
+  status: string;
+  source: string;
+}
+
+export interface ArrivalsResponse {
+  stop_id: string;
+  stop_name: string;
+  included_stop_ids: string[];
+  route_id: string | null;
+  window_minutes: number;
+  timezone: string;
+  realtime_available: boolean;
+  total: number;
+  items: ArrivalItem[];
+  note: string;
+  attribution: string;
+}
+
+export interface RealtimeAlert {
+  alert_id: string;
+  cause: string | null;
+  effect: string | null;
+  header: string | null;
+  description: string | null;
+  active_periods: (number | null)[][];
+  route_ids: string[];
+}
+
+export interface RealtimeAlertList {
+  items: RealtimeAlert[];
+  total: number;
+  limit: number;
+}
+
+export interface StopArrivalsQuery {
+  route_id?: string;
+  minutes?: number;
+  limit?: number;
+}
+
+export interface RealtimeAlertQuery {
+  route_id?: string;
+  mode?: string;
+  limit?: number;
+}
+
 export interface RealtimeStatus {
   configured: boolean;
   polling: boolean;

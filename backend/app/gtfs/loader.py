@@ -11,19 +11,41 @@ import httpx
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import Session
 
-from ..models import Agency, GtfsFeed, Route, ShapePoint, Stop, StopTime, Trip
+from ..models import (
+    Agency,
+    GtfsFeed,
+    Route,
+    ServiceCalendar,
+    ServiceCalendarDate,
+    ShapePoint,
+    Stop,
+    StopTime,
+    Trip,
+)
 from .parser import (
+    CALENDAR_COLUMNS,
+    CALENDAR_DATE_COLUMNS,
     SHAPE_COLUMNS,
     FeedArchive,
     gtfs_time_to_seconds,
     parse_coordinate,
     parse_float,
+    parse_gtfs_date,
     parse_int,
     validate_archive,
 )
 
 BATCH_SIZE = 5000
-CHILD_MODELS = (Agency, Route, Stop, StopTime, Trip, ShapePoint)
+CHILD_MODELS = (
+    Agency,
+    Route,
+    Stop,
+    StopTime,
+    Trip,
+    ShapePoint,
+    ServiceCalendar,
+    ServiceCalendarDate,
+)
 
 
 @dataclass(frozen=True)
@@ -36,6 +58,8 @@ class LoadResult:
     counts: dict[str, int]
     skipped_stops: int = 0
     skipped_shapes: int = 0
+    skipped_calendars: int = 0
+    skipped_calendar_dates: int = 0
 
 
 def _optional(row: dict[str, str], key: str, limit: int) -> str | None:
@@ -191,6 +215,80 @@ def _shape_rows(
     return rows, skipped
 
 
+def _calendar_rows(
+    archive: FeedArchive, feed_id: int
+) -> tuple[list[dict[str, object]], int]:
+    source_rows = archive.rows("calendar.txt")
+    if source_rows and any(column not in source_rows[0] for column in CALENDAR_COLUMNS):
+        return [], len(source_rows)
+
+    rows: list[dict[str, object]] = []
+    seen: set[str] = set()
+    skipped = 0
+    for row in source_rows:
+        service_id = row.get("service_id", "").strip()
+        start = parse_gtfs_date(row.get("start_date"))
+        end = parse_gtfs_date(row.get("end_date"))
+        if not service_id or start is None or end is None or service_id in seen:
+            skipped += 1
+            continue
+        seen.add(service_id)
+        row_data: dict[str, object] = {
+            "feed_id": feed_id,
+            "service_id": service_id[:64],
+            "start_date": start,
+            "end_date": end,
+        }
+        for day in (
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
+        ):
+            row_data[day] = parse_int(row.get(day), 0) or 0
+        rows.append(row_data)
+    return rows, skipped
+
+
+def _calendar_date_rows(
+    archive: FeedArchive, feed_id: int
+) -> tuple[list[dict[str, object]], int]:
+    source_rows = archive.rows("calendar_dates.txt")
+    if source_rows and any(
+        column not in source_rows[0] for column in CALENDAR_DATE_COLUMNS
+    ):
+        return [], len(source_rows)
+
+    rows: list[dict[str, object]] = []
+    seen: set[tuple[str, str]] = set()
+    skipped = 0
+    for row in source_rows:
+        service_id = row.get("service_id", "").strip()
+        date = parse_gtfs_date(row.get("date"))
+        exception_type = parse_int(row.get("exception_type"))
+        if (
+            not service_id
+            or date is None
+            or exception_type not in (1, 2)
+            or (service_id, date) in seen
+        ):
+            skipped += 1
+            continue
+        seen.add((service_id, date))
+        rows.append(
+            {
+                "feed_id": feed_id,
+                "service_id": service_id[:64],
+                "date": date,
+                "exception_type": exception_type,
+            }
+        )
+    return rows, skipped
+
+
 def _insert_batches(
     session: Session, model: type, rows: list[dict[str, object]]
 ) -> None:
@@ -206,6 +304,8 @@ def _counts_from_feed(feed: GtfsFeed) -> dict[str, int]:
         "trips": feed.trip_count,
         "stop_times": feed.stop_time_count,
         "shape_points": feed.shape_point_count,
+        "calendars": feed.calendar_count,
+        "calendar_dates": feed.calendar_date_count,
     }
 
 
@@ -229,6 +329,10 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
 
         stop_rows, skipped = _stop_rows(archive, feed_id)
         shape_rows, skipped_shapes = _shape_rows(archive, feed_id)
+        calendar_rows, skipped_calendars = _calendar_rows(archive, feed_id)
+        calendar_date_rows, skipped_calendar_dates = _calendar_date_rows(
+            archive, feed_id
+        )
         table_rows: list[tuple[type, list[dict[str, object]]]] = [
             (Agency, _agency_rows(archive, feed_id)),
             (Route, _route_rows(archive, feed_id)),
@@ -236,6 +340,8 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
             (Trip, _trip_rows(archive, feed_id)),
             (StopTime, _stop_time_rows(archive, feed_id)),
             (ShapePoint, shape_rows),
+            (ServiceCalendar, calendar_rows),
+            (ServiceCalendarDate, calendar_date_rows),
         ]
         for model, rows in table_rows:
             _insert_batches(session, model, rows)
@@ -246,6 +352,8 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
         feed.trip_count = len(table_rows[3][1])
         feed.stop_time_count = len(table_rows[4][1])
         feed.shape_point_count = len(shape_rows)
+        feed.calendar_count = len(calendar_rows)
+        feed.calendar_date_count = len(calendar_date_rows)
 
         session.execute(update(GtfsFeed).values(is_active=False))
         feed.is_active = True
@@ -263,6 +371,8 @@ def load_feed(session: Session, archive: FeedArchive, *, force: bool = False) ->
         counts=_counts_from_feed(feed),
         skipped_stops=skipped,
         skipped_shapes=skipped_shapes,
+        skipped_calendars=skipped_calendars,
+        skipped_calendar_dates=skipped_calendar_dates,
     )
 
 

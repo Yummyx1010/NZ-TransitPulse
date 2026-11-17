@@ -25,6 +25,17 @@ describe("API client", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/routes/R%201%2F2/stops");
   });
 
+  it("builds a route-scoped stop search query", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.stops("Britomart", "70-205");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/stops?q=Britomart&route_id=70-205",
+    );
+  });
+
   it("builds a route geometry request", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
     vi.stubGlobal("fetch", fetchMock);
@@ -79,6 +90,32 @@ describe("API client", () => {
     await api.realtimeStatus();
 
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/realtime/status");
+  });
+
+  it("builds a stop arrivals query", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.stopArrivals("9103-0e65d9b8", {
+      route_id: "70-205",
+      minutes: 60,
+      limit: 20,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/stops/9103-0e65d9b8/arrivals?route_id=70-205&minutes=60&limit=20",
+    );
+  });
+
+  it("builds a bus-only service alerts query", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.realtimeAlerts({ mode: "Bus", route_id: "70-205" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/realtime/alerts?mode=Bus&route_id=70-205",
+    );
   });
 
   it("throws a descriptive error on a failed response", async () => {

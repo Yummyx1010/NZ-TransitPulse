@@ -8,7 +8,16 @@ from sqlalchemy.orm import Session
 
 from app.gtfs.loader import load_feed
 from app.gtfs.parser import GtfsValidationError, read_archive_bytes
-from app.models import GtfsFeed, Route, ShapePoint, Stop, StopTime, Trip
+from app.models import (
+    GtfsFeed,
+    Route,
+    ServiceCalendar,
+    ServiceCalendarDate,
+    ShapePoint,
+    Stop,
+    StopTime,
+    Trip,
+)
 from tests.fixtures import ROUTES, SHAPES, build_fixture_zip
 
 
@@ -25,9 +34,13 @@ def test_load_feed_inserts_all_tables(db_session: Session) -> None:
         "trips": 4,
         "stop_times": 6,
         "shape_points": 7,
+        "calendars": 2,
+        "calendar_dates": 0,
     }
     assert result.skipped_stops == 1
     assert result.skipped_shapes == 0
+    assert result.skipped_calendars == 0
+    assert result.skipped_calendar_dates == 0
     assert db_session.scalar(select(func.count()).select_from(GtfsFeed)) == 1
     assert db_session.get(GtfsFeed, result.feed_id).is_active is True
 
@@ -109,6 +122,31 @@ def test_shape_loader_skips_invalid_and_duplicate_points(db_session: Session) ->
 
     assert result.counts["shape_points"] == 7
     assert result.skipped_shapes == 3
+
+
+def test_calendars_keep_valid_service_days_and_exceptions(db_session: Session) -> None:
+    dates = (
+        "service_id,date,exception_type\n"
+        "WEEKDAY,20261118,2\n"
+        "WEEKDAY,2026-11-19,2\n"
+        "WEEKDAY,20261120,9\n"
+        "WEEKDAY,20261118,1\n"
+    )
+    archive = read_archive_bytes(
+        build_fixture_zip(overrides={"calendar_dates.txt": dates}), "dates.zip"
+    )
+
+    result = load_feed(db_session, archive)
+
+    assert result.counts["calendars"] == 2
+    assert result.counts["calendar_dates"] == 1
+    assert result.skipped_calendar_dates == 3
+    calendars = db_session.scalars(
+        select(ServiceCalendar).order_by(ServiceCalendar.service_id)
+    ).all()
+    assert [row.service_id for row in calendars] == ["WEEKDAY", "WEEKEND"]
+    exceptions = db_session.scalars(select(ServiceCalendarDate)).all()
+    assert [(row.date, row.exception_type) for row in exceptions] == [("20261118", 2)]
 
 
 def test_bundle_without_shapes_still_loads(db_session: Session) -> None:

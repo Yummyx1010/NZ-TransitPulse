@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     at_realtime_max_retries: int = 3
     at_max_calls_per_week: int = 35000
     at_realtime_auto_start: bool = True
+    on_time_threshold_seconds: int = 60
 
     @field_validator("at_max_calls_per_week")
     @classmethod

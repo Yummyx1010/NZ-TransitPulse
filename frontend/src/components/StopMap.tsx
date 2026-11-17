@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -11,11 +11,10 @@ import {
 
 import type { RealtimeVehicle, ShapeGeometry } from "../api/types";
 import { displayStopName, formatCoordinate, formatFeedTime } from "../lib/format";
+import { type LatLng, boundsForShape, shouldFitBounds } from "../lib/mapBounds";
 import { createBusIcon } from "./busIcon";
 
 const AUCKLAND_CENTRE: [number, number] = [-36.8485, 174.7633];
-
-type LatLng = [number, number];
 
 function FitBounds({
   points,
@@ -27,16 +26,32 @@ function FitBounds({
   fitSignal: number;
 }) {
   const map = useMap();
+  const tokenRef = useRef(0);
+
   useEffect(() => {
-    // Defer one tick so the container has its final size before Leaflet measures it.
-    const timer = window.setTimeout(() => {
-      map.invalidateSize();
-      if (points.length === 0) {
-        map.setView(AUCKLAND_CENTRE, 11);
+    // Always invalidate a pending fit, including when geometry disappears between two
+    // route selections: otherwise a stale timer would frame the previous route.
+    const token = ++tokenRef.current;
+    if (!shouldFitBounds(points)) {
+      return;
+    }
+    let timer = 0;
+    let attempts = 0;
+
+    const apply = () => {
+      // A newer route selection supersedes this pending fit.
+      if (token !== tokenRef.current) return;
+      map.invalidateSize({ animate: false });
+      const size = map.getSize();
+      // A freshly mounted flex container can still measure 0. Fitting now computes a
+      // meaningless zoom/centre, so wait until the map has a usable size.
+      if ((size.x < 50 || size.y < 50) && attempts < 40) {
+        attempts += 1;
+        timer = window.setTimeout(apply, 16);
         return;
       }
       if (points.length === 1) {
-        map.setView(points[0], 14);
+        map.setView(points[0], 14, { animate: false });
         return;
       }
       map.fitBounds(points, {
@@ -45,7 +60,9 @@ function FitBounds({
         maxZoom: 13,
         animate: false,
       });
-    }, 0);
+    };
+
+    timer = window.setTimeout(apply, 0);
     return () => window.clearTimeout(timer);
   }, [map, points, viewKey, fitSignal]);
   return null;
@@ -68,27 +85,19 @@ export function StopMap({
   fitSignal,
   emptyMessage,
 }: StopMapProps) {
-  const geometryPoints = useMemo<LatLng[]>(
-    () => (shape ? shape.points.map((point) => [point[0], point[1]] as LatLng) : []),
-    [shape],
-  );
-  const vehiclePoints = useMemo<LatLng[]>(
-    () => vehicles.map((vehicle) => [vehicle.lat, vehicle.lon] as LatLng),
-    [vehicles],
-  );
-  const boundsPoints = geometryPoints.length > 0 ? geometryPoints : vehiclePoints;
-  const viewKey = shape?.shape_id ?? "vehicles-only";
+  const geometryPoints = useMemo<LatLng[]>(() => boundsForShape(shape), [shape]);
+  const viewKey = shape?.shape_id ?? "no-shape";
+  const hasContent = shape !== null || vehicles.length > 0;
 
-  if (boundsPoints.length === 0) {
-    return (
-      <div className="map-placeholder">
-        {emptyMessage ?? "Select a route to see its geometry on the map."}
-      </div>
-    );
-  }
-
+  // The MapContainer stays mounted even with no data. Unmounting it between route
+  // selections destroys the Leaflet instance and makes fitBounds unreliable.
   return (
     <div className="map-wrapper">
+      {!hasContent ? (
+        <div className="map-notice" role="status">
+          {emptyMessage ?? "Select a route to see its geometry on the map."}
+        </div>
+      ) : null}
       {approximate ? (
         <div className="map-note" role="note">
           <strong>Approximate route</strong> — {note}
@@ -110,7 +119,7 @@ export function StopMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <FitBounds points={boundsPoints} viewKey={viewKey} fitSignal={fitSignal} />
+        <FitBounds points={geometryPoints} viewKey={viewKey} fitSignal={fitSignal} />
         {geometryPoints.length > 1 ? (
           <Polyline
             positions={geometryPoints}

@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "./api/client";
 import { Attribution } from "./components/Attribution";
+import { PassengerBoard } from "./components/PassengerBoard";
 import { RouteExplorer } from "./components/RouteExplorer";
 import { StopMap } from "./components/StopMap";
 import { displayRouteName, displayStopName, formatFeedTime } from "./lib/format";
 
 export default function App() {
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [showVehicles, setShowVehicles] = useState(true);
@@ -25,11 +25,11 @@ export default function App() {
     queryFn: () => api.networkStatus(),
   });
   const routesQuery = useQuery({
-    queryKey: ["routes", deferredQuery, mode],
+    queryKey: ["routes", deferredQuery],
     queryFn: () =>
       api.routes({
         q: deferredQuery || undefined,
-        mode: mode || undefined,
+        mode: "Bus",
         limit: 100,
       }),
   });
@@ -102,7 +102,7 @@ export default function App() {
           <strong>Live buses</strong>
           {realtimeStatus ? (
             <span>
-              {vehicles.length} shown · {realtimeStatus.vehicle_count} vehicles in feed (all modes) ·
+              {vehicles.length} shown · {realtimeStatus.vehicle_count} vehicles in AT feed ·
               updated {formatFeedTime(realtimeStatus.feed_timestamp)} ·{" "}
               {realtimeStatus.calls_last_7_days}/{realtimeStatus.weekly_quota} API calls this week
             </span>
@@ -140,12 +140,10 @@ export default function App() {
           routes={routes}
           total={routesQuery.data?.total ?? 0}
           query={query}
-          mode={mode}
           selectedId={selectedRouteId}
           loading={routesQuery.isLoading}
-          error={routesQuery.isError ? "Could not load routes. Is the API running on :8000?" : null}
+          error={routesQuery.isError ? "Could not load bus routes. Is the API running on :8000?" : null}
           onQueryChange={setQuery}
-          onModeChange={setMode}
           onSelect={setSelectedRouteId}
         />
 
@@ -158,7 +156,7 @@ export default function App() {
                 <p className="muted">
                   {selectedRoute.mode} route · {orderedStops.length} stop
                   {orderedStops.length === 1 ? "" : "s"} shown
-                  {geometry ? ` · ${geometry.shape_count} route pattern${geometry.shape_count === 1 ? "" : "s"}` : ""}
+                  {geometry ? ` · ${geometry.shape_count} direction${geometry.shape_count === 1 ? "" : "s"} / branch${geometry.shape_count === 1 ? "" : "es"}` : ""}
                   {shapeFilter ? " · buses on this pattern only" : ""}
                 </p>
               ) : (
@@ -168,18 +166,31 @@ export default function App() {
             <div className="heading-actions">
               {geometry && geometry.shapes.length > 1 ? (
                 <label className="shape-select">
-                  <span>Route pattern</span>
+                  <span>Direction / branch</span>
                   <select
-                    aria-label="Route pattern"
+                    aria-label="Direction / branch"
                     value={shape?.shape_id ?? ""}
                     onChange={(event) => setSelectedShapeId(event.target.value)}
                   >
-                    {geometry.shapes.map((item) => (
-                      <option key={item.shape_id} value={item.shape_id}>
-                        {item.label}
-                        {item.direction_id !== null ? ` · D${item.direction_id}` : ""}
-                      </option>
-                    ))}
+                    {geometry.shapes
+                      .filter((item) => item.trip_count >= 10)
+                      .map((item) => (
+                        <option key={item.shape_id} value={item.shape_id}>
+                          {item.label}
+                          {item.direction_id !== null ? ` · D${item.direction_id}` : ""}
+                        </option>
+                      ))}
+                    {geometry.shapes.some((item) => item.trip_count < 10) ? (
+                      <optgroup label="Short turns / branches">
+                        {geometry.shapes
+                          .filter((item) => item.trip_count < 10)
+                          .map((item) => (
+                            <option key={item.shape_id} value={item.shape_id}>
+                              {item.label} · Short turn
+                            </option>
+                          ))}
+                      </optgroup>
+                    ) : null}
                   </select>
                 </label>
               ) : null}
@@ -220,6 +231,11 @@ export default function App() {
           ) : null}
         </section>
       </main>
+
+      <PassengerBoard
+        routeId={selectedRouteId}
+        routeLabel={selectedRoute ? displayRouteName(selectedRoute) : null}
+      />
 
       <Attribution text={statusQuery.data?.attribution} />
     </div>

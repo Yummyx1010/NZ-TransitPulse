@@ -32,7 +32,7 @@ const NEWMARKET: StopSummary = {
 const SHAPE_A: ShapeGeometry = {
   shape_id: "SH1",
   label: "City Centre · 2 trips",
-  trip_count: 2,
+  trip_count: 200,
   direction_id: 0,
   headsign: "City Centre",
   points: [
@@ -45,7 +45,7 @@ const SHAPE_A: ShapeGeometry = {
 const SHAPE_B: ShapeGeometry = {
   shape_id: "SH4",
   label: "Newmarket · 1 trip",
-  trip_count: 1,
+  trip_count: 150,
   direction_id: 1,
   headsign: "Newmarket",
   points: [
@@ -84,7 +84,7 @@ const VEHICLES: RealtimeVehicle[] = [
     speed: null,
     route_id: "WEST-201",
     route_short_name: "WEST",
-    mode: "Rail",
+    mode: "Bus",
     trip_id: "T2",
     timestamp: 1794707698,
   },
@@ -129,10 +129,10 @@ vi.mock("./api/client", () => ({
         },
         {
           route_id: "R2",
-          short_name: "WEST",
-          long_name: "Western Line",
-          route_type: 2,
-          mode: "Rail",
+          short_name: "70",
+          long_name: "Botany To Britomart",
+          route_type: 3,
+          mode: "Bus",
           colour: "0000FF",
         },
       ],
@@ -143,8 +143,10 @@ vi.mock("./api/client", () => ({
     routeStops: vi.fn(),
     routeGeometry: vi.fn(),
     stops: vi.fn(),
+    stopArrivals: vi.fn(),
     realtimeStatus: vi.fn(),
     realtimeVehicles: vi.fn(),
+    realtimeAlerts: vi.fn(),
   },
 }));
 
@@ -198,6 +200,21 @@ beforeEach(() => {
     total: 1547,
     limit: 1000,
   });
+  vi.mocked(api.stops).mockResolvedValue({ items: [], total: 0, limit: 50, offset: 0 });
+  vi.mocked(api.realtimeAlerts).mockResolvedValue({ items: [], total: 0, limit: 100 });
+  vi.mocked(api.stopArrivals).mockResolvedValue({
+    stop_id: "S1",
+    stop_name: "Britomart",
+    included_stop_ids: ["S1"],
+    route_id: null,
+    window_minutes: 60,
+    timezone: "Pacific/Auckland",
+    realtime_available: true,
+    total: 0,
+    items: [],
+    note: "Scheduled times come from GTFS stop_times.",
+    attribution: "Data source: Auckland Transport, licensed under CC BY 4.0",
+  });
 });
 
 afterEach(() => {
@@ -211,8 +228,21 @@ describe("Network explorer", () => {
 
     expect(screen.getByRole("heading", { name: "NZ TransitPulse" })).toBeInTheDocument();
     expect(await screen.findByText("18 · New North Road")).toBeInTheDocument();
-    expect(screen.getByText("WEST · Western Line")).toBeInTheDocument();
+    expect(screen.getByText("70 · Botany To Britomart")).toBeInTheDocument();
     expect(screen.getByText(/licensed under CC BY 4.0/)).toBeInTheDocument();
+  });
+
+  it("offers no train or ferry options anywhere in the explorer", async () => {
+    renderApp();
+
+    await screen.findByText("18 · New North Road");
+
+    expect(screen.getByText("Bus routes")).toBeInTheDocument();
+    expect(screen.getByText("NZ TransitPulse covers buses only.")).toBeInTheDocument();
+    expect(screen.queryByText("Ferry")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rail")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Mode")).not.toBeInTheDocument();
+    expect(api.routes).toHaveBeenCalledWith({ q: undefined, mode: "Bus", limit: 100 });
   });
 
   it("draws only the selected route's default shape and its ordered stops", async () => {
@@ -239,7 +269,7 @@ describe("Network explorer", () => {
       expect(screen.getByTestId("map-shape")).toHaveTextContent("SH1"),
     );
 
-    fireEvent.change(screen.getByLabelText("Route pattern"), {
+    fireEvent.change(screen.getByLabelText("Direction / branch"), {
       target: { value: "SH4" },
     });
 
@@ -279,7 +309,7 @@ describe("Network explorer", () => {
   it("shows real bus positions and requests buses only", async () => {
     renderApp();
 
-    expect(await screen.findByText(/1547 vehicles in feed/)).toBeInTheDocument();
+    expect(await screen.findByText(/1547 vehicles in AT feed/)).toBeInTheDocument();
     expect(screen.getByText(/2 shown/)).toBeInTheDocument();
     expect(screen.getByText("Live buses")).toBeInTheDocument();
     expect(screen.getByTestId("map-vehicles")).toHaveTextContent("2");
@@ -317,7 +347,7 @@ describe("Network explorer", () => {
       }),
     );
 
-    fireEvent.change(screen.getByLabelText("Route pattern"), {
+    fireEvent.change(screen.getByLabelText("Direction / branch"), {
       target: { value: "SH4" },
     });
 
@@ -333,7 +363,7 @@ describe("Network explorer", () => {
 
   it("can hide live buses without faking any data", async () => {
     renderApp();
-    await screen.findByText(/1547 vehicles in feed/);
+    await screen.findByText(/1547 vehicles in AT feed/);
 
     fireEvent.click(screen.getByLabelText("Show live buses"));
 
@@ -374,12 +404,12 @@ describe("Network explorer", () => {
     renderApp();
     await screen.findByText("18 · New North Road");
 
-    fireEvent.change(screen.getByPlaceholderText("e.g. 18 or Western"), {
-      target: { value: "Western" },
+    fireEvent.change(screen.getByPlaceholderText("e.g. 70 or 18"), {
+      target: { value: "70" },
     });
 
     await waitFor(() => {
-      expect(api.routes).toHaveBeenCalledWith({ q: "Western", mode: undefined, limit: 100 });
+      expect(api.routes).toHaveBeenCalledWith({ q: "70", mode: "Bus", limit: 100 });
     });
   });
 });

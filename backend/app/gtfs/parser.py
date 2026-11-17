@@ -14,9 +14,22 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REQUIRED_FILES = ("agency.txt", "routes.txt", "stops.txt", "trips.txt", "stop_times.txt")
-OPTIONAL_FILES = ("shapes.txt",)
+OPTIONAL_FILES = ("shapes.txt", "calendar.txt", "calendar_dates.txt")
 
 SHAPE_COLUMNS = ("shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence")
+CALENDAR_COLUMNS = (
+    "service_id",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "start_date",
+    "end_date",
+)
+CALENDAR_DATE_COLUMNS = ("service_id", "date", "exception_type")
 
 REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
     "agency.txt": ("agency_name",),
@@ -149,3 +162,11 @@ def parse_float(value: str | None) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+def parse_gtfs_date(value: str | None) -> str | None:
+    """Keep a GTFS ``YYYYMMDD`` date only when it is eight digits."""
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned if len(cleaned) == 8 and cleaned.isdigit() else None

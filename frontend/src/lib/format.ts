@@ -30,3 +30,19 @@ export function formatFeedTime(timestamp: number | null | undefined): string {
     second: "2-digit",
   });
 }
+
+export function formatMinutesAway(minutes: number): string {
+  return minutes <= 0 ? "Due" : `${minutes} min`;
+}
+
+export function formatDelay(seconds: number | null): string {
+  if (seconds === null) return "timetable only";
+  const minutes = Math.round(Math.abs(seconds) / 60);
+  if (seconds > 0) return `+${minutes} min`;
+  if (seconds < 0) return `-${minutes} min`;
+  return "On time";
+}
+
+export function delayStatusClass(status: string): string {
+  return `delay-badge delay-${status.toLowerCase().replace(/\s+/g, "-")}`;
+}

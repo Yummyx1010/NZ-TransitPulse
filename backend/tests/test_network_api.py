@@ -58,6 +58,14 @@ def test_pagination_is_applied(loaded_network_client: TestClient) -> None:
     assert len(page["items"]) == 2
 
 
+def test_stop_search_can_be_scoped_to_a_route(loaded_network_client: TestClient) -> None:
+    buses = loaded_network_client.get("/api/v1/stops?route_id=R1").json()
+    ferries = loaded_network_client.get("/api/v1/stops?route_id=R3").json()
+
+    assert {item["stop_id"] for item in buses["items"]} == {"S1", "S2"}
+    assert {item["stop_id"] for item in ferries["items"]} == {"S3"}
+
+
 def test_route_detail_and_stops(loaded_network_client: TestClient) -> None:
     detail = loaded_network_client.get("/api/v1/routes/R1").json()
     stops = loaded_network_client.get("/api/v1/routes/R1/stops").json()

@@ -206,9 +206,24 @@ def create_realtime_router(
     @router.get("/alerts", response_model=RealtimeAlertList, summary="Service alerts")
     def alerts(
         route_id: str | None = None,
+        mode: str | None = Query(None, description="Only alerts affecting this mode"),
         limit: int = Query(100, ge=1, le=500),
+        db: Session = Depends(get_db),
     ) -> RealtimeAlertList:
         all_alerts = store.alerts(route_id=route_id, limit=1000)
+        if mode:
+            route_ids = {rid for alert in all_alerts for rid in alert.route_ids}
+            labels = _route_labels(db, route_ids)
+            wanted = mode.strip().lower()
+            all_alerts = [
+                alert
+                for alert in all_alerts
+                if not alert.route_ids
+                or any(
+                    (labels.get(rid, (None, None))[1] or "").lower() == wanted
+                    for rid in alert.route_ids
+                )
+            ]
         page = all_alerts[:limit]
         items = [
             RealtimeAlert(

@@ -17,7 +17,7 @@ flowchart LR
 
 | Component | Technology | Responsibility |
 | --- | --- | --- |
-| `backend/app/api` | Python 3.12, FastAPI, Pydantic | REST API, validation, OpenAPI docs |
+| `backend/app/api` | Python 3.12, FastAPI, Pydantic | REST API, validation, OpenAPI docs, stop arrivals (ETA) |
 | `backend/app/gtfs` | `zipfile`, `csv`, `httpx` | Parse and transactionally load the AT static bundle, including `shapes.txt` geometry |
 | `backend/app/cli/gtfs.py` | argparse, Alembic | `migrate`, `check-db`, `load`, `status` commands |
 | `backend/app/models` | SQLAlchemy 2 ORM | GTFS static tables keyed by `feed_id` |
@@ -26,7 +26,7 @@ flowchart LR
 | `backend/app/collector` (Phase 4+) | SQLAlchemy | Persist derived delay observations, enforce retention |
 | `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends |
 | Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, observations, aggregates |
-| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Static network explorer drawing per-shape GTFS geometry (live vehicles in Phase 3, analytics in Phase 5) |
+| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Network explorer, live bus map and a passenger ETA/alerts board (analytics in Phase 5) |
 | CI | GitHub Actions | Backend lint/tests and frontend typecheck/tests/build |
 
 ## Data flow
@@ -38,8 +38,9 @@ flowchart LR
    positions, trip updates and service alerts. The response is decoded into a typed
    snapshot held in memory (raw payloads are never persisted). The API joins it with
    MySQL route labels and overlays live vehicle markers on the map.
-3. **Passenger reads** (Phase 3): the browser calls the API for stop arrivals, ETAs and
-   delay status; the API joins the realtime snapshot with the static schedule.
+3. **Passenger reads** (Phase 3): the browser calls `/stops/{id}/arrivals`; the API joins
+   MySQL `stop_times`/`trips`/`routes` (scheduled times) with the realtime snapshot
+   (delays) and returns ETAs plus delay status. Service alerts are filtered to bus routes.
 4. **Observation collection** (Phase 4): each poll writes compact derived delay records.
    Data quality checks reject impossible values and duplicates.
 5. **Analytics** (Phase 5): scheduled aggregation produces daily/hourly reliability
@@ -74,6 +75,14 @@ flowchart LR
 | Bus glyphs instead of dots | A small SVG bus rotated to the reported bearing is recognisable at a glance and conveys direction; icons are cached per 15-degree bucket |
 | Bounds follow the selected shape | Choosing a route must frame that route automatically, with `invalidateSize` before fitting and a manual `Fit to view` escape hatch |
 | A pattern scopes its vehicles | `shape_id` -> `trips.trip_id` -> live vehicle `trip_id`. Outbound and inbound buses must not be mixed when one direction is selected; a failed static lookup degrades to unfiltered buses rather than an empty map |
+| Buses-only product, generic data layer | AT publishes rail and ferry entities too. Importing the full static feed keeps the loader simple and preserves `route_type`, but every user-facing query filters `mode=Bus`; the UI exposes no mode selector |
+| Static timetable as base, realtime as overlay | A scheduled arrival is useful even without a live prediction; trip-level or stop-level delays are applied only when a matching `trip_id` exists |
+| Stations aggregate their platforms | GTFS stations (`location_type=1`) have no `stop_times` rows; child platforms are resolved and listed in the arrival response |
+| Service calendars define "runs today" | `calendar.txt` weekly flags plus `calendar_dates.txt` exceptions are imported and applied to the Auckland service date; inactive service variants no longer create duplicate scheduled rows |
+| `tzdata` is a runtime dependency | Windows has no system tz database, so `zoneinfo` needs `tzdata` to resolve `Pacific/Auckland` (NZST/NZDT) |
+| Viewport comes only from the selected shape | While geometry loads, falling back to all live vehicle positions framed the whole city; the map container also stays mounted so Leaflet is not recreated between route selections |
+| Arrival boards follow the selected route | The board and stop search are route-scoped by default because that is the product intent; an explicit `Show all buses at this stop` control prevents the filter from being hidden |
+| The map row has a bounded height | The 100-route list must scroll inside its own panel; otherwise the flex/grid row grows to thousands of pixels and Leaflet centres the route geometry outside the visible viewport. `FitBounds` also waits for a usable `getSize()` |
 
 ## Local topology (Phase 0-5)
 

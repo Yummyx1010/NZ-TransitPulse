@@ -103,8 +103,10 @@ h2 {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   gap: 20px;
-  flex: 1;
-  min-height: 560px;
+  /* A bounded row keeps the 100-route list from stretching the map container to
+     thousands of pixels, which would put fitBounds results outside the viewport. */
+  height: clamp(480px, 68vh, 720px);
+  min-height: 0;
 }
 
 .panel {
@@ -120,6 +122,7 @@ h2 {
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .field {
@@ -159,6 +162,7 @@ h2 {
   margin: 0;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -216,8 +220,12 @@ h2 {
 }
 
 .badge-bus { background: #fee2e2; color: #991b1b; }
-.badge-rail { background: #dbeafe; color: #1e40af; }
-.badge-ferry { background: #ccfbf1; color: #115e59; }
+
+.bus-only-note {
+  margin: -4px 0 2px;
+  font-size: 0.78rem;
+  color: #64748b;
+}
 
 .empty,
 .error {
@@ -232,6 +240,8 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .detail-heading {
@@ -243,7 +253,7 @@ h2 {
 .map,
 .map-placeholder {
   width: 100%;
-  min-height: 400px;
+  min-height: 280px;
   flex: 1;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -318,6 +328,16 @@ h2 {
   gap: 10px;
 }
 
+.map-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
 .map-legend {
   display: flex;
   flex-wrap: wrap;
@@ -388,6 +408,187 @@ h2 {
 .fit-button:hover {
   border-color: #2563eb;
   background: #eff6ff;
+}
+
+.passenger {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.passenger-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.filter-chip,
+.route-filter-toggle {
+  padding: 8px 13px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.route-filter-toggle {
+  cursor: pointer;
+}
+
+.route-filter-toggle:hover {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.passenger-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+  gap: 20px;
+}
+
+.arrivals-column,
+.alerts-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.alerts-column h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.stop-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.stop-options li + li {
+  border-top: 1px solid #f1f5f9;
+}
+
+.stop-options button {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.stop-options button:hover {
+  background: #eff6ff;
+}
+
+.arrivals-stop {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.arrival-list,
+.alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrival-list li {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.arrival-list li > .muted {
+  grid-column: 2 / -1;
+  font-size: 0.74rem;
+}
+
+.arrival-route {
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  border-left: 4px solid #2563eb;
+  border-radius: 6px;
+  background: #eff6ff;
+  font-weight: 700;
+}
+
+.arrival-headsign {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrival-time {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.delay-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.delay-on-time { background: #dcfce7; color: #166534; }
+.delay-delayed { background: #fee2e2; color: #991b1b; }
+.delay-early { background: #dbeafe; color: #1e40af; }
+.delay-scheduled { background: #f1f5f9; color: #64748b; }
+
+.arrivals-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.alert-list li {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.alert-list li p {
+  margin: 5px 0;
+  color: #475569;
+}
+
+@media (max-width: 900px) {
+  .passenger-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .map-note {

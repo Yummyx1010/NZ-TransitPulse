@@ -54,6 +54,13 @@ SHAPES = (
     "SH2,-36.8710,174.7770,1,0\n"
     "SH3,-36.8270,174.7960,1,0\n"
 )
+CALENDARS = (
+    "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+    "start_date,end_date\n"
+    "WEEKDAY,1,1,1,1,1,1,1,20200101,20991231\n"
+    "WEEKEND,0,0,0,0,0,1,1,20200101,20991231\n"
+)
+CALENDAR_DATES = "service_id,date,exception_type\n"
 
 BASE_TABLES: dict[str, str] = {
     "agency.txt": AGENCY,
@@ -62,6 +69,8 @@ BASE_TABLES: dict[str, str] = {
     "trips.txt": TRIPS,
     "stop_times.txt": STOP_TIMES,
     "shapes.txt": SHAPES,
+    "calendar.txt": CALENDARS,
+    "calendar_dates.txt": CALENDAR_DATES,
 }
 
 

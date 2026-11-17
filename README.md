@@ -5,23 +5,28 @@ A production-oriented public transport monitoring and analytics platform for
 
 NZ TransitPulse answers two sets of questions:
 
-- **For passengers:** Where is my bus, train or ferry now? When will it arrive? Is this
-  route delayed?
+- **For passengers:** Where is my bus now? When will it arrive? Is this route delayed?
 - **For people who care about transit data:** Which routes are least reliable? At what
   time of day are delays worst? Is reliability improving?
+
+> **Product scope: buses only.** The Auckland Transport feed also contains trains and
+> ferries; they remain in the imported static GTFS data, but the UI, live vehicle layer
+> and future analytics exclusively cover buses. The API keeps a generic `mode` filter,
+> while the dashboard always requests `mode=Bus`.
 
 The project is developed in small, documented phases. See
 [`docs/ROADMAP.md`](docs/ROADMAP.md) for the phase plan and
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the contribution and commit convention.
 
-> **Current status: Phase 2 - Live buses on the map.** Routes, stops, trips, scheduled
-> stop times and `shapes.txt` geometry are imported from the official Auckland Transport
-> GTFS bundle into MySQL and explored on a React/Leaflet map. The aggregated AT
-> GTFS-Realtime feed is polled every 30 seconds and held in memory; **live bus positions
-> are drawn as small heading-aware bus icons** alongside real route geometry. Trains and
-> ferries are filtered out, the map auto-fits the selected route, and choosing a route
-> pattern (outbound/inbound) shows only the buses running that pattern. Historical
-> observations, reliability analytics and ETAs arrive in later phases.
+> **Current status: Phase 3 - Passenger view.** Routes, stops, trips, scheduled stop
+> times and `shapes.txt` geometry are imported from the official Auckland Transport GTFS
+> bundle into MySQL and explored on a React/Leaflet map. The aggregated AT GTFS-Realtime
+> feed is polled every 30 seconds and held in memory; live bus positions are drawn as
+> heading-aware bus icons alongside real route geometry. A stop-arrival board combines
+> the static timetable with live delays to show ETAs and delay status, is scoped to the
+> selected bus route by default, and filters trips by the imported service calendar for
+> today. Bus-only service alerts are shown alongside it. Historical observations and
+> reliability analytics arrive in later phases.
 
 ## Phase index
 
@@ -35,7 +40,8 @@ for a reviewer to see what is implemented and how it was verified.
 | 1 | Static network explorer: GTFS import, network API, map UI | [docs/phases/PHASE-01-static-network-explorer.md](docs/phases/PHASE-01-static-network-explorer.md) | [docs/test-reports/PHASE-01.md](docs/test-reports/PHASE-01.md) | `phase-01` |
 | 1B | Route geometry fix: shapes.txt, per-shape drawing, ordered stops | [docs/phases/PHASE-01B-route-geometry.md](docs/phases/PHASE-01B-route-geometry.md) | [docs/test-reports/PHASE-01B.md](docs/test-reports/PHASE-01B.md) | — |
 | 2 | Realtime ingestion: aggregated GTFS-RT, bus-only live map, direction-scoped vehicles, quota-aware poller | [docs/phases/PHASE-02-realtime-ingestion.md](docs/phases/PHASE-02-realtime-ingestion.md) | [docs/test-reports/PHASE-02.md](docs/test-reports/PHASE-02.md) | — |
-| 3-7 | Passenger view, history, analytics, hardening, AWS | Planned | Planned | — |
+| 3 | Passenger view: stop ETA board, delay status, bus service alerts, direction/branch UX | [docs/phases/PHASE-03-passenger-view.md](docs/phases/PHASE-03-passenger-view.md) | [docs/test-reports/PHASE-03.md](docs/test-reports/PHASE-03.md) | — |
+| 4-7 | Historical observations, analytics dashboard (MVP), hardening, AWS | Planned | Planned | — |
 
 ## Technology
 
@@ -140,18 +146,23 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 ### 5. Demo in 60 seconds
 
 1. Open `http://localhost:8000/docs` and try `GET /api/v1/network/status`.
-2. Open `http://localhost:5173` and search for a route (e.g. `18` or `Western`).
-3. Filter by mode (Bus / Rail / Ferry), select a route (try `70`), and see its real
-   drawn geometry, ordered stops and the buses serving that route. The map automatically
-   fits the selected route; `Fit to view` re-centres it at any time. If the route has
-   several patterns, use the `Route pattern` selector to switch direction (`D0`/`D1`) or
-   branch — the buses shown are re-filtered to that pattern's trips only.
+2. Open the dashboard (`http://localhost:5173`, or the port Vite prints; use
+   `npm run dev -- --port 5174` if 5173 is occupied).
+3. Search bus routes (try `70`), select one, and see its real drawn geometry, ordered
+   stops and the buses serving that route. The map auto-fits the selected route; `Fit to
+   view` re-centres it. Use `Direction / branch` to switch `D0`/`D1`; short-turn
+   patterns are grouped separately, and the buses shown are re-filtered to the selected
+   pattern.
 4. Orange bus icons show heading and can be hidden with `Show live buses`; the live bar
-   reports the feed timestamp and weekly API quota usage. Trains and ferries are not
-   drawn.
-5. Check the footer for the Auckland Transport CC BY 4.0 attribution.
+   reports the feed timestamp and weekly API quota usage.
+5. In the **Passenger view** panel, the selected route scopes the board by default.
+   Search a stop (e.g. `Britomart`) and pick it to see that route's upcoming buses with
+   scheduled/predicted times, minutes away and `Early / On time / Delayed` badges; rows
+   without a live prediction say `timetable only`. Use `Show all buses at this stop` to
+   opt out. The right column lists bus-only service alerts.
+6. Check the footer for the Auckland Transport CC BY 4.0 attribution.
 
-## API (Phase 1 + 1B + 2)
+## API (Phase 1 + 1B + 2 + 3)
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -162,12 +173,13 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 | `GET` | `/api/v1/routes/{route_id}` | Route detail and stop count |
 | `GET` | `/api/v1/routes/{route_id}/stops` | Stops served by a route |
 | `GET` | `/api/v1/routes/{route_id}/geometry` | Per-shape route geometry with ordered stops; `stop_times` fallback is marked `approximate` |
-| `GET` | `/api/v1/stops` | List/search stops (`q`, or `lat`+`lon`+`radius_m`) |
+| `GET` | `/api/v1/stops` | List/search stops (`q`, `route_id`, or `lat`+`lon`+`radius_m`) |
 | `GET` | `/api/v1/stops/{stop_id}` | Stop detail and routes serving it |
+| `GET` | `/api/v1/stops/{stop_id}/arrivals` | Upcoming bus arrivals with scheduled/predicted times and delay status (`minutes`, `limit`, `route_id`) |
 | `GET` | `/api/v1/realtime/status` | Poller health, entity counts, weekly quota usage |
 | `GET` | `/api/v1/realtime/vehicles` | Live vehicle positions (`mode=Bus`, `route_id`, `shape_id`, `bbox`, `limit`) |
 | `GET` | `/api/v1/realtime/trip-updates` | Live trip delays and stop-time predictions |
-| `GET` | `/api/v1/realtime/alerts` | Service alerts |
+| `GET` | `/api/v1/realtime/alerts` | Service alerts (`mode=Bus`, `route_id`, `limit`) |
 
 ## Documentation
 

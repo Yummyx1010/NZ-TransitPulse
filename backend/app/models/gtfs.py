@@ -31,6 +31,8 @@ class GtfsFeed(Base):
     trip_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     stop_time_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     shape_point_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    calendar_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    calendar_date_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class Agency(Base):
@@ -91,6 +93,35 @@ class Trip(Base):
     block_id: Mapped[str | None] = mapped_column(String(64))
     shape_id: Mapped[str | None] = mapped_column(String(64))
     wheelchair_accessible: Mapped[int | None] = mapped_column(Integer)
+
+
+class ServiceCalendar(Base):
+    """Weekly service pattern from GTFS calendar.txt."""
+
+    __tablename__ = "service_calendars"
+
+    feed_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    service_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    monday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tuesday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    wednesday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    thursday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    friday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    saturday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sunday: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    start_date: Mapped[str] = mapped_column(String(8), nullable=False)
+    end_date: Mapped[str] = mapped_column(String(8), nullable=False)
+
+
+class ServiceCalendarDate(Base):
+    """One date exception from GTFS calendar_dates.txt (1 added, 2 removed)."""
+
+    __tablename__ = "service_calendar_dates"
+
+    feed_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    service_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    date: Mapped[str] = mapped_column(String(8), primary_key=True)
+    exception_type: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class ShapePoint(Base):

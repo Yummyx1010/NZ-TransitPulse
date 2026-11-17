@@ -170,6 +170,16 @@ def test_alerts_tolerate_null_active_periods(
     assert alert["route_ids"] == ["70-205"]
 
 
+def test_alerts_can_be_filtered_to_buses_only(
+    settings: Settings, db_session: Session
+) -> None:
+    _seed_route(db_session)
+    client = _client(settings, db_session)
+
+    assert client.get("/api/v1/realtime/alerts?mode=Bus").json()["total"] == 1
+    assert client.get("/api/v1/realtime/alerts?mode=Rail").json()["total"] == 0
+
+
 def test_empty_snapshot_returns_empty_lists(
     settings: Settings, db_session: Session
 ) -> None:

@@ -327,7 +327,7 @@ def create_network_router(settings: Settings) -> APIRouter:
                 shapes.append(
                     ShapeGeometry(
                         shape_id=shape_id,
-                        label=f"{base[:80]} · {trip_count} trips",
+                        label=f"{base[:80]} · {trip_count} scheduled trips",
                         trip_count=trip_count,
                         direction_id=direction_id,
                         headsign=heading or None,
@@ -374,6 +374,9 @@ def create_network_router(settings: Settings) -> APIRouter:
     @router.get("/stops", response_model=StopListResponse, summary="List or locate stops")
     def list_stops(
         q: str | None = Query(None, description="Search stop name, code or id"),
+        route_id: str | None = Query(
+            None, description="Only stops served by this route"
+        ),
         lat: float | None = Query(None, ge=-90, le=90),
         lon: float | None = Query(None, ge=-180, le=180),
         radius_m: int | None = Query(None, ge=50, le=50000),
@@ -392,6 +395,25 @@ def create_network_router(settings: Settings) -> APIRouter:
         if feed_id is None:
             return StopListResponse(items=[], total=0, limit=limit, offset=offset)
         conditions = [Stop.feed_id == feed_id]
+        if route_id:
+            served = set(db.scalars(_stop_ids_for_route(db, feed_id, route_id)).all())
+            if served:
+                parents = db.scalars(
+                    select(Stop.parent_station).where(
+                        Stop.feed_id == feed_id,
+                        Stop.stop_id.in_(served),
+                        Stop.parent_station.is_not(None),
+                    )
+                ).all()
+                children = db.scalars(
+                    select(Stop.stop_id).where(
+                        Stop.feed_id == feed_id,
+                        Stop.parent_station.in_(served),
+                    )
+                ).all()
+                served.update(parent for parent in parents if parent)
+                served.update(children)
+            conditions.append(Stop.stop_id.in_(served))
         if q:
             pattern = f"%{q}%"
             conditions.append(
