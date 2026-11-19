@@ -1,8 +1,9 @@
 # Data Sources and Compliance
 
-Verified against Auckland Transport (AT) public documentation on 2026-11-14 and live
-API responses on 2026-11-15. Re-check these pages before enabling the historical
-collector in Phase 4.
+Verified against Auckland Transport (AT) public documentation on 2026-11-14, live
+API responses on 2026-11-15, and the official reports page on 2026-11-18. The MVP's
+historical analysis uses AT's published reports; a self-hosted live observation
+collector is a post-MVP option, not a Phase 4 dependency.
 
 ## Sources
 
@@ -11,7 +12,8 @@ collector in Phase 4.
 | AT GTFS static bundle (`agency`, `routes`, `stops`, `trips`, `stop_times`, `shapes`; plus `calendar` and others) | Phase 1 network explorer and route geometry, schedule baseline for delay calculations | GTFS zip (CSV) | Public download, no key required |
 | AT aggregated GTFS-Realtime (`realtime/legacy`) | Phase 2: vehicles, trip updates and alerts in one call | GTFS-RT JSON, wrapped in `status/response` envelope | Developer portal subscription key |
 | AT GTFS-Realtime: Vehicle Positions | Live positions on the map; separate endpoint kept as optional fallback | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
-| AT GTFS-Realtime: Trip Updates | Phase 3 ETAs, Phase 4/5 delay observations | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
+| AT GTFS-Realtime: Trip Updates | Phase 3 ETAs and live delay status only; not used for MVP history | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
+| AT published reports: punctuality/reliability, bus performance, patronage, hourly bus boardings | Phase 4 historical analysis and Phase 5 dashboard | XLSX workbooks downloaded from the AT reports page | Public download; source page has no explicit open-data licence, so cite and normalise rather than redistribute |
 | AT GTFS-Realtime: Service Alerts | Phase 3 disruption panel | GTFS-RT JSON by default, protobuf on request | Developer portal subscription key |
 
 ### References
@@ -24,6 +26,8 @@ collector in Phase 4.
 - AT developer portal: <https://dev-portal.at.govt.nz>
 - Getting started with the Realtime API: <https://pp-dev-portal.at.govt.nz/realtime-api>
 - API terms of use: <https://pp-dev-portal.at.govt.nz/api-terms-of-use>
+- AT public transport reports / patronage / punctuality:
+  <https://at.govt.nz/about-us/reports-publications/how-many-people-are-taking-buses-trains-and-ferries>
 
 ## Verified technical facts
 
@@ -68,25 +72,53 @@ collector in Phase 4.
   `TP_AT_REALTIME_URL` (aggregated) or the optional `TP_AT_*_URL` values; do not
   hard-code subscription-specific paths in source code.
 
-## Compliance decisions for "permitted historical observations"
+## Official report facts (verified 2026-11-18)
+
+- The reports page provides downloadable **XLSX** files for:
+  monthly punctuality and reliability, bus performance, monthly patronage, hourly bus
+  boardings, and passenger counts by month/day. Route-specific reviews are PDFs.
+- Coverage is much longer than a self-hosted collector could provide: monthly patronage
+  goes back to **July 2005**, bus performance reports cover **2019-2025**, and
+  punctuality/reliability and hourly boardings cover **July 2023-October 2026**.
+- Official definitions shown on the page:
+  - **Punctuality**: first stop departs no earlier than 1 minute before schedule and no
+    later than 5 minutes after; last stop arrives no later than 5 minutes after schedule.
+  - **Reliability**: first stop departs no earlier than 1 minute before schedule and no
+    later than 10 minutes after.
+  These definitions differ from the Phase 3 ETA badge threshold (±60 s) and must be
+  labelled separately in the UI.
+- The report page does **not** state an explicit open-data licence; it shows
+  `© Auckland Transport 2026`. Treat these as official published reports: store derived
+  normalized rows, cite the source page and reporting period, and do not redistribute
+  the original workbooks as project data.
+- Example report URLs discovered from the page HTML:
+  - Punctuality 2023-2024:
+    <https://at.govt.nz/media/fonhut3i/auckland-transport-monthly-punctuality-and-reliability-2023-to-2024.xlsx>
+  - Punctuality 2024-2025:
+    <https://at.govt.nz/media/soieg3up/auckland-transport-monthly-punctuality-and-reliability-2024-to-2025.xlsx>
+  - Punctuality 2025-2026:
+    <https://at.govt.nz/media/x1loqu23/auckland-transport-monthly-punctuality-and-reliability-june-2026.xlsx>
+  - Bus performance 2024:
+    <https://at.govt.nz/media/sxnlgvh2/auckland-transport-bus-performance-report-january-2024-to-december-2024.xlsx>
+  - Monthly patronage 2005-2025:
+    <https://at.govt.nz/media/l4ugvfd4/auckland-transport-monthly-patronage-from-july-2005-to-june-2025.xlsx>
+
+## Compliance decisions for the MVP historical analysis
 
 1. The subscription key lives only in `.env` (server-side) and is never exposed to the
    browser, committed, logged, or included in test fixtures.
-2. Historical collection stores **derived observations** (trip, route, stop, scheduled
-   time, predicted time, delay, observation timestamp, feed timestamp), not raw feed
-   dumps. This keeps storage small and avoids redistributing the upstream feed.
-3. A documented retention window is implemented in Phase 4 (default: 90 days of raw
-   observations, longer-lived daily aggregates). Retention is configurable.
-4. Aggregates displayed publicly are computed values, with the AT attribution visible
-   on every dashboard page.
-5. Before the Phase 4 collector is enabled, the current API terms of use must be read
-   in full and the outcome recorded in `docs/phases/PHASE-04-*.md`. If the terms
-   restrict retention or derived storage, the collector stays disabled and the
-   analytics phase uses only locally generated sample data.
-6. No personal data is collected. Vehicle identifiers are operational, not personal,
-   and are treated as opaque strings.
-7. The project states it is an independent project and is not affiliated with or
-   endorsed by Auckland Transport.
+2. The MVP does **not** persist GTFS-Realtime payloads or self-collected delay
+   observations. Historical analysis is based on AT's published reports.
+3. Imported report rows retain source report metadata, reporting period and checksum so
+   results can be audited against the official workbook.
+4. Original XLSX files are treated as downloadable inputs under `data/reports/` and are
+   gitignored; the repository stores only normalized derived tables and source URLs.
+5. Official punctuality/reliability definitions are shown in the dashboard, and locally
+   computed GTFS network metrics are labelled as project-derived, not AT indicators.
+6. Raw report files are not redistributed as NZ TransitPulse datasets. Public pages show
+   the AT attribution and state that the project is independent and not endorsed by AT.
+7. A self-hosted observation collector remains a post-MVP option for deployments that
+   run continuously; enabling it requires a fresh terms-of-use review.
 
 ## Time handling
 

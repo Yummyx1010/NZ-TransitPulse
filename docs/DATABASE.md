@@ -83,9 +83,10 @@ set "TP_RUN_MYSQL_INTEGRATION=1"
 `check-db` prints the MySQL version and the list of tables. `migrate` applies all Alembic
 revisions: `0001_initial_gtfs_schema.py` (six core tables) and
 `0002_route_shape_points.py` (the `shape_points` table plus
-`gtfs_feeds.shape_point_count`) and `0003_service_calendars.py` (the
-`service_calendars` / `service_calendar_dates` tables and their feed counts), as well as
-Alembic's own `alembic_version` table.
+`gtfs_feeds.shape_point_count`), `0003_service_calendars.py` (the
+`service_calendars` / `service_calendar_dates` tables and their feed counts), and
+`0004_official_reports.py` (official report registry and normalized metric tables), as
+well as Alembic's own `alembic_version` table.
 
 After applying `0002` or `0003` to a database that already contains a feed, re-import once
 so the existing data gains its geometry and service calendars. The checksum is unchanged,
@@ -109,7 +110,7 @@ Troubleshooting:
 | `Table 'gtfs_feeds' doesn't exist` | `migrate` has not been run | `python -m app.cli.gtfs migrate` |
 | `Table ... already exists` | The database was previously created by hand | Run `alembic stamp head` only if the schema already matches, otherwise drop the tables and re-run `migrate` |
 
-## 3. Schema (Phase 1 + 1B + Phase 3 calendars)
+## 3. Schema (Phase 1 + 1B + Phase 3/4)
 
 All GTFS tables include `feed_id` as part of their primary key. `gtfs_feeds` records
 every import and marks exactly one row as active.
@@ -125,6 +126,10 @@ every import and marks exactly one row as active.
 | `shape_points` | `feed_id`, `shape_id`, `shape_pt_sequence` | Ordered points of the real drawn route geometry from `shapes.txt` |
 | `service_calendars` | `feed_id`, `service_id` | Weekly operating pattern and valid date range from `calendar.txt` |
 | `service_calendar_dates` | `feed_id`, `service_id`, `date` | Added (1) / removed (2) service exceptions from `calendar_dates.txt` |
+| `official_reports` | `id` | Registry of imported AT XLSX reports with source URL and checksum |
+| `official_route_metrics` | `id` | Route-level monthly punctuality, reliability, boardings and service-hour metrics |
+| `official_network_metrics` | `id` | Network-level monthly patronage metrics by mode |
+| `official_import_issues` | `id` | Non-fatal parsing/data-quality issues |
 
 Indexes: `ix_gtfs_feeds_checksum`, `ix_routes_feed_type`,
 `ix_stops_feed_position`, `ix_trips_feed_route`, `ix_stop_times_feed_stop`.
@@ -170,6 +175,18 @@ To import a file you downloaded manually:
 ```bat
 python -m app.cli.gtfs load --file C:\path\to\gtfs.zip
 ```
+
+Official AT XLSX reports are imported separately:
+
+```bat
+python -m app.cli.reports load
+python -m app.cli.reports status
+```
+
+`reports load` downloads each registered workbook into `data/reports/` (gitignored),
+parses it, and replaces the normalized rows for that report in one transaction. An
+unchanged checksum is skipped unless `--force` is supplied. `--only <source_key>` can
+import a single report, and `--no-download` reuses cached files.
 
 ## 5. Schema changes
 

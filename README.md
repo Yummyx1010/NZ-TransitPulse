@@ -25,8 +25,9 @@ The project is developed in small, documented phases. See
 > heading-aware bus icons alongside real route geometry. A stop-arrival board combines
 > the static timetable with live delays to show ETAs and delay status, is scoped to the
 > selected bus route by default, and filters trips by the imported service calendar for
-> today. Bus-only service alerts are shown alongside it. Historical observations and
-> reliability analytics arrive in later phases.
+> today. Bus-only service alerts are shown alongside it. Historical analysis uses AT's
+> published punctuality, reliability and patronage reports already imported into MySQL,
+> combined with GTFS network metrics.
 
 ## Phase index
 
@@ -41,7 +42,8 @@ for a reviewer to see what is implemented and how it was verified.
 | 1B | Route geometry fix: shapes.txt, per-shape drawing, ordered stops | [docs/phases/PHASE-01B-route-geometry.md](docs/phases/PHASE-01B-route-geometry.md) | [docs/test-reports/PHASE-01B.md](docs/test-reports/PHASE-01B.md) | — |
 | 2 | Realtime ingestion: aggregated GTFS-RT, bus-only live map, direction-scoped vehicles, quota-aware poller | [docs/phases/PHASE-02-realtime-ingestion.md](docs/phases/PHASE-02-realtime-ingestion.md) | [docs/test-reports/PHASE-02.md](docs/test-reports/PHASE-02.md) | — |
 | 3 | Passenger view: stop ETA board, delay status, bus service alerts, direction/branch UX | [docs/phases/PHASE-03-passenger-view.md](docs/phases/PHASE-03-passenger-view.md) | [docs/test-reports/PHASE-03.md](docs/test-reports/PHASE-03.md) | — |
-| 4-7 | Historical observations, analytics dashboard (MVP), hardening, AWS | Planned | Planned | — |
+| 4 | Official historical reports: XLSX import and normalized performance/patronage tables | [docs/phases/PHASE-04-official-historical-reports.md](docs/phases/PHASE-04-official-historical-reports.md) | [docs/test-reports/PHASE-04.md](docs/test-reports/PHASE-04.md) | — |
+| 5-7 | Analytics dashboard (MVP), hardening, AWS | Planned | Planned | — |
 
 ## Technology
 
@@ -176,6 +178,9 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 | `GET` | `/api/v1/stops` | List/search stops (`q`, `route_id`, or `lat`+`lon`+`radius_m`) |
 | `GET` | `/api/v1/stops/{stop_id}` | Stop detail and routes serving it |
 | `GET` | `/api/v1/stops/{stop_id}/arrivals` | Upcoming bus arrivals with scheduled/predicted times and delay status (`minutes`, `limit`, `route_id`) |
+| `GET` | `/api/v1/official/status` | Imported official report registry and checksums |
+| `GET` | `/api/v1/official/route-metrics` | Official route-level punctuality/reliability/boardings (`metric`, `route_no`, `start_month`, `end_month`) |
+| `GET` | `/api/v1/official/network-metrics` | Official network-level monthly patronage (`metric`, `start_month`, `end_month`) |
 | `GET` | `/api/v1/realtime/status` | Poller health, entity counts, weekly quota usage |
 | `GET` | `/api/v1/realtime/vehicles` | Live vehicle positions (`mode=Bus`, `route_id`, `shape_id`, `bbox`, `limit`) |
 | `GET` | `/api/v1/realtime/trip-updates` | Live trip delays and stop-time predictions |
@@ -204,11 +209,12 @@ deployed from source with App Runner / Elastic Beanstalk.
 
 ## Data attribution
 
-Public transport data is sourced from **Auckland Transport** and is licensed under
+GTFS static and GTFS-Realtime data is sourced from **Auckland Transport** under
 [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+Historical punctuality, reliability and patronage figures come from AT's published
+reports and are cited as official AT reports; original workbooks are not redistributed.
 Map tiles are © OpenStreetMap contributors. See
-[`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) for the compliance decisions governing
-historical observation collection.
+[`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) for the full source and compliance notes.
 
 This is an independent project. It is not affiliated with or endorsed by Auckland
 Transport.

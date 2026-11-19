@@ -234,9 +234,10 @@ The absolute-time fallback is covered by a deterministic test.
 
 ## 9. Next phase
 
-Phase 4 (historical observations): persist derived delay observations with a retention
-policy and add data-quality checks. Service calendars are already imported in Phase 3.
-Phase 5 then produces the reliability dashboard (the MVP).
+Phase 4 (official historical reports): import AT's published punctuality, reliability,
+patronage and bus-performance workbooks into normalized MySQL tables. Service calendars
+are already imported in Phase 3, and a self-hosted live observation collector is no
+longer an MVP dependency. Phase 5 then produces the analytics dashboard (the MVP).
 
 ## 10. Commit
 

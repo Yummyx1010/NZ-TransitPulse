@@ -8,10 +8,11 @@ The MVP is reached at the end of **Phase 5**. AWS deployment is deliberately pos
 
 | Audience | Question | Answered by |
 | --- | --- | --- |
-| Passengers | Where is my bus / train / ferry, and when will it arrive? | Phases 1-3 |
+| Passengers | Where is my bus, and when will it arrive? | Phases 1-3 |
 | Passengers | Is this route delayed right now? | Phases 2-3 |
-| Data-minded users | Which routes are least reliable? When are delays worst? | Phases 4-5 |
+| Data-minded users | Which bus routes are least reliable? When are delays worst? | Phases 4-5 |
 | Data-minded users | Is reliability improving over time? | Phase 5 |
+| Data-minded users | How is patronage related to service performance? | Phases 4-5 |
 
 ## Phases
 
@@ -21,17 +22,22 @@ The MVP is reached at the end of **Phase 5**. AWS deployment is deliberately pos
 | 1 | Static network explorer | Browse Auckland routes, stops and timetables | GTFS static loader, MySQL schema + migrations, routes/stops/trips API, React map and search |  |
 | 2 | Realtime ingestion | Live vehicles, trip updates and service alerts in the API **and on the map** | Aggregated AT client (auth, retry, quota budget), tolerant GTFS-RT decoder, 30 s poller, in-memory snapshot, realtime endpoints, live vehicle markers |  |
 | 3 | Passenger view | A passenger can answer "where is it, when does it arrive, is it delayed?" | Stop arrivals endpoint, ETA board, delay status, bus service alerts, direction/branch UX |  |
-| 4 | Historical observations | Permitted, auditable history collection | Compliance and retention notes, observation schema, collector worker, data quality checks, backfill from recorded snapshots |  |
-| 5 | Reliability analytics | MVP: a modern dashboard answering the analytics questions | Punctuality / OTP metrics, worst-route ranking, time-of-day heatmap, trend charts, filters, full docs and test suite | ✅ |
+| 4 | Official historical reports | Import AT's published punctuality, reliability, patronage and bus-performance workbooks | Report registry, resilient XLSX parser, normalized MySQL tables, route aliases, data-quality checks, reproducible download/import CLI |  |
+| 5 | Analytics dashboard | MVP: a modern dashboard answering the analytics questions | Official punctuality/reliability trends, worst-route ranking, monthly heatmap, patronage vs performance, GTFS network analysis, filters, full docs and tests | ✅ |
 | 6 | Hardening | Production readiness before cloud deployment | Caching, observability (metrics/logs/traces), error budgets, security review, load tests, runbook |  |
 | 7 | AWS deployment | Runs on AWS | RDS MySQL, ECS Fargate, ALB, S3 + CloudFront, Secrets Manager, IaC, deployment runbook |  |
 
-**Status (2026-11-17):** Phase 0, Phase 1, Phase 1B and Phase 2 are complete, verified
-and pushed. **Phase 3 is complete but not yet committed**: buses-only scope, a stop-ETA
-board combining the static timetable with live delays, delay status, bus service alerts,
-direction/branch UX polish, imported service calendars and route-scoped stop/ETA search.
-Phase 4 (historical observations) is next. See
-`docs/phases/PHASE-03-passenger-view.md` for the delivered passenger view.
+**Post-MVP optional:** a self-hosted observation collector may still be added when the
+project runs continuously on a server. It is not part of the MVP and does not block
+Phases 4-5. Historical analysis in the MVP is based on AT's published reports.
+
+**Status (2026-11-18):** Phase 0, Phase 1, Phase 1B, Phase 2 and Phase 3 are complete,
+verified and pushed. Phase 3 delivered the buses-only scope, a stop-ETA board combining
+the static timetable with live delays, delay status, bus service alerts, direction/branch
+UX polish, imported service calendars and route-scoped stop/ETA search. **Phase 4 is
+complete in the working tree but not yet committed**: 13 official AT XLSX reports were imported
+into normalized MySQL tables, replacing self-hosted observation collection for the MVP.
+Phase 5 (analytics dashboard) is next. See `docs/phases/PHASE-04-official-historical-reports.md`.
 
 ## Phase dependencies
 
@@ -53,5 +59,7 @@ Phase 0 ──> Phase 1 ──> Phase 3 ──> Phase 5 ──> Phase 6 ──> 
 - No authentication, payments, or user accounts in the MVP.
 - No raw GTFS-Realtime payload redistribution; see `DATA_SOURCES.md`.
 - Map tiles come from OpenStreetMap via Leaflet so no paid map token is required.
-- Metrics are only shown with a clearly labelled data-sufficiency indicator, because a
-  meaningful reliability trend needs several weeks of observations.
+- Metrics distinguish **official published indicators** from locally computed network
+  metrics from GTFS. Official punctuality/reliability definitions must be shown in the UI.
+- Raw source reports are treated as inputs, not redistributed as project data. Imported
+  rows keep report metadata and AT attribution for auditability.

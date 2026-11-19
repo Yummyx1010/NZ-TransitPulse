@@ -23,9 +23,9 @@ flowchart LR
 | `backend/app/models` | SQLAlchemy 2 ORM | GTFS static tables keyed by `feed_id` |
 | `backend/migrations` | Alembic | Versioned MySQL schema |
 | `backend/app/ingestion` | `httpx`, threading | Aggregated AT client, decoder, in-memory snapshot and 30 s poller |
-| `backend/app/collector` (Phase 4+) | SQLAlchemy | Persist derived delay observations, enforce retention |
-| `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends |
-| Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, observations, aggregates |
+| `backend/app/reports` (Phase 4+) | `httpx`, `openpyxl`, SQLAlchemy | Download and parse official AT XLSX reports, normalize rows, record data-quality issues |
+| `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends, patronage vs performance, network metrics |
+| Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, official report tables, analytics inputs |
 | `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Network explorer, live bus map and a passenger ETA/alerts board (analytics in Phase 5) |
 | CI | GitHub Actions | Backend lint/tests and frontend typecheck/tests/build |
 
@@ -41,24 +41,27 @@ flowchart LR
 3. **Passenger reads** (Phase 3): the browser calls `/stops/{id}/arrivals`; the API joins
    MySQL `stop_times`/`trips`/`routes` (scheduled times) with the realtime snapshot
    (delays) and returns ETAs plus delay status. Service alerts are filtered to bus routes.
-4. **Observation collection** (Phase 4): each poll writes compact derived delay records.
-   Data quality checks reject impossible values and duplicates.
-5. **Analytics** (Phase 5): scheduled aggregation produces daily/hourly reliability
-   metrics; the dashboard reads only aggregates, not raw observations.
+4. **Official report ingestion** (Phase 4): AT's published XLSX workbooks are downloaded
+   on demand, parsed with workbook-specific profiles, and normalized into source-tagged
+   MySQL tables. Data-quality checks record missing columns, unmapped routes and
+   impossible metric values.
+5. **Analytics** (Phase 5): the dashboard reads official punctuality/reliability and
+   patronage rows, and computes network metrics from the static GTFS tables. Official
+   indicators and locally computed metrics are labelled separately.
 
 ## Key decisions
 
 | Decision | Rationale |
 | --- | --- |
 | UTC in storage, `Pacific/Auckland` in UI | Correct handling of NZST/NZDT and GTFS times past midnight |
-| Derived observations only | Compliance, small storage footprint, fast analytics queries |
+| Official published reports for MVP history | Years of trusted AT-published indicators are available immediately; no always-on local collector, no extra API quota and no raw realtime persistence |
 | PyMySQL driver instead of `mysqlclient` | Pure Python, works on Windows without a C toolchain |
 | In-memory snapshot for live state | Live data is ephemeral; the database holds history, not current positions |
 | Leaflet + OpenStreetMap | No paid token or API key needed for the MVP |
 | Server-side API key | The browser never sees the AT subscription key |
 | Full snapshots, no diffing | The AT feed does not support incremental updates |
 | Configurable endpoint URLs | Legacy and Compat API paths differ per subscription |
-| Data-sufficiency labels | Reliability claims require weeks of observations, not minutes |
+| Official vs local metrics stay separate | AT punctuality/reliability definitions are displayed verbatim; GTFS-derived frequency/corridor metrics are labelled as locally computed |
 | Feed-version staging | A new GTFS bundle is loaded under a new `feed_id` and activated in one transaction, so readers never see a half-imported network |
 | BOM and nested-folder tolerant parsing | Real GTFS bundles differ in encoding and archive layout |
 | GTFS times stored as both raw string and seconds | Supports scheduled times past `24:00:00` without losing the original value |
@@ -68,7 +71,7 @@ flowchart LR
 | `stop_times` fallback labelled `approximate` | When `shapes.txt` is missing, trips are grouped by their exact ordered stop sequence, but the UI must state that these are not road geometry |
 | Shape lookups join `trips` instead of an `IN (subquery)` | Avoids scanning the ~1M-row `stop_times` table; route 70 geometry dropped from 4.2 s to 0.4 s |
 | One aggregated realtime call, not three separate feeds | 30 s polling stays at 20,160 calls/week (58% of the 35,000 quota); three feeds would be 60,480/week |
-| Realtime state only in memory | Feed frames expire every 30 s; writing them to MySQL would add load without analytical value. History begins in Phase 4 with derived observations |
+| Realtime state only in memory | Feed frames expire every 30 s; writing them to MySQL would add load without analytical value. Phase 4 history comes from AT's published reports instead |
 | Rolling 7-day call budget with reserve and backoff | Protects the weekly quota during retries/outages; CI and unit tests never use the live subscription key |
 | Static route labels are a best-effort join | A MySQL outage must not take down live vehicle positions, so realtime endpoints degrade to unlabelled markers |
 | Bus-only map, filtered server-side | The product focuses on buses; the browser never downloads train/ferry positions it will not draw. Vehicles whose mode cannot be confirmed are excluded |

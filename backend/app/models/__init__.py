@@ -11,6 +11,12 @@ from .gtfs import (
     StopTime,
     Trip,
 )
+from .reports import (
+    OfficialImportIssue,
+    OfficialNetworkMetric,
+    OfficialReport,
+    OfficialRouteMetric,
+)
 
 __all__ = [
     "Agency",
@@ -22,4 +28,8 @@ __all__ = [
     "Stop",
     "StopTime",
     "Trip",
+    "OfficialImportIssue",
+    "OfficialNetworkMetric",
+    "OfficialReport",
+    "OfficialRouteMetric",
 ]

@@ -89,8 +89,9 @@ GET /api/v1/realtime/alerts?route_id=&limit=
 ## 7. Design decisions
 
 1. **One aggregated call per cycle** — 58% quota usage at 30 s instead of 173%.
-2. **Raw feeds never persisted** — frames expire in 30 s; Phase 4 will persist only
-   derived observations. This also keeps the compliance surface small.
+2. **Raw feeds never persisted** — frames expire in 30 s. MVP history now comes from AT's
+   published reports rather than a self-hosted observation collector, keeping both the
+   storage footprint and compliance surface small.
 3. **In-process snapshot** — no Redis/broker needed for a single-instance local MVP;
    the store is abstracted so a shared cache can replace it later.
 4. **Poller owned by lifespan** — clean shutdown, and `realtime_polling_enabled` ensures

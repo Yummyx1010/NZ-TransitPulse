@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     database_echo: bool = False
     gtfs_static_url: str = "https://gtfs.at.govt.nz/gtfs.zip"
     gtfs_data_dir: str = "data/gtfs"
+    report_data_dir: str = "data/reports"
 
     at_api_base_url: str = "https://api.at.govt.nz"
     at_api_key: str = ""
