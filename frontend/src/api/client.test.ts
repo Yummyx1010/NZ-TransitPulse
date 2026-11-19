@@ -118,6 +118,38 @@ describe("API client", () => {
     );
   });
 
+  it("builds analytics ranking and trend queries", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.analyticsRanking({
+      metric: "punctuality",
+      startMonth: "2024-01",
+      endMonth: "2024-12",
+      includeSchoolRoutes: false,
+      limit: 10,
+    });
+    await api.analyticsTrends("reliability", "70", "2024-01", "2024-12");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/analytics/route-ranking?metric=punctuality&start_month=2024-01&end_month=2024-12&include_school_routes=false&limit=10",
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/analytics/trends?metric=reliability&route_no=70&start_month=2024-01&end_month=2024-12",
+    );
+  });
+
+  it("builds a route-averaged scatter query", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.analyticsScatter("2019-01", "2026-10", false, 1000, 24);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/analytics/patronage-vs-performance?start_month=2019-01&end_month=2026-10&include_school_routes=false&min_boardings=1000&limit=24",
+    );
+  });
+
   it("throws a descriptive error on a failed response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
 

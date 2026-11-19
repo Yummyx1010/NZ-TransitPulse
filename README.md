@@ -18,16 +18,13 @@ The project is developed in small, documented phases. See
 [`docs/ROADMAP.md`](docs/ROADMAP.md) for the phase plan and
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the contribution and commit convention.
 
-> **Current status: Phase 3 - Passenger view.** Routes, stops, trips, scheduled stop
-> times and `shapes.txt` geometry are imported from the official Auckland Transport GTFS
-> bundle into MySQL and explored on a React/Leaflet map. The aggregated AT GTFS-Realtime
-> feed is polled every 30 seconds and held in memory; live bus positions are drawn as
-> heading-aware bus icons alongside real route geometry. A stop-arrival board combines
-> the static timetable with live delays to show ETAs and delay status, is scoped to the
-> selected bus route by default, and filters trips by the imported service calendar for
-> today. Bus-only service alerts are shown alongside it. Historical analysis uses AT's
-> published punctuality, reliability and patronage reports already imported into MySQL,
-> combined with GTFS network metrics.
+> **Current status: Phase 5 - Analytics MVP.** The landing page is the live bus map with
+> real route geometry, heading-aware bus icons, route-pattern filtering, a passenger ETA
+> board and bus service alerts. Analytics is a separate product area with Overview,
+> Ridership, Performance, Relationships and Methodology views. It uses a narrow civic-data
+> visual system, separates official punctuality/reliability from ridership, and exposes
+> metric units, definitions, source coverage and route mapping. The frontend is split into
+> routed pages, hooks and focused UI components for maintainability.
 
 ## Phase index
 
@@ -43,7 +40,8 @@ for a reviewer to see what is implemented and how it was verified.
 | 2 | Realtime ingestion: aggregated GTFS-RT, bus-only live map, direction-scoped vehicles, quota-aware poller | [docs/phases/PHASE-02-realtime-ingestion.md](docs/phases/PHASE-02-realtime-ingestion.md) | [docs/test-reports/PHASE-02.md](docs/test-reports/PHASE-02.md) | — |
 | 3 | Passenger view: stop ETA board, delay status, bus service alerts, direction/branch UX | [docs/phases/PHASE-03-passenger-view.md](docs/phases/PHASE-03-passenger-view.md) | [docs/test-reports/PHASE-03.md](docs/test-reports/PHASE-03.md) | — |
 | 4 | Official historical reports: XLSX import and normalized performance/patronage tables | [docs/phases/PHASE-04-official-historical-reports.md](docs/phases/PHASE-04-official-historical-reports.md) | [docs/test-reports/PHASE-04.md](docs/test-reports/PHASE-04.md) | — |
-| 5-7 | Analytics dashboard (MVP), hardening, AWS | Planned | Planned | — |
+| 5 | Analytics MVP: separate analytics page, official rankings/trends/heatmap/scatter, network metrics | [docs/phases/PHASE-05-analytics-mvp.md](docs/phases/PHASE-05-analytics-mvp.md) | [docs/test-reports/PHASE-05.md](docs/test-reports/PHASE-05.md) | — |
+| 6-7 | Hardening, AWS deployment | Planned | Planned | — |
 
 ## Technology
 
@@ -162,9 +160,12 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
    scheduled/predicted times, minutes away and `Early / On time / Delayed` badges; rows
    without a live prediction say `timetable only`. Use `Show all buses at this stop` to
    opt out. The right column lists bus-only service alerts.
-6. Check the footer for the Auckland Transport CC BY 4.0 attribution.
+6. Click **Analytics** in the left sidebar. Use the Overview for headline findings, then
+   open Ridership, Performance, Relationships and Methodology. Click any route or chart
+   point to inspect exact values; the selected route carries across analytics views.
+7. Check the footer for the Auckland Transport CC BY 4.0 attribution.
 
-## API (Phase 1 + 1B + 2 + 3)
+## API (Phase 1 + 1B + 2 + 3 + 4 + 5)
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -181,6 +182,14 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:8000`.
 | `GET` | `/api/v1/official/status` | Imported official report registry and checksums |
 | `GET` | `/api/v1/official/route-metrics` | Official route-level punctuality/reliability/boardings (`metric`, `route_no`, `start_month`, `end_month`) |
 | `GET` | `/api/v1/official/network-metrics` | Official network-level monthly patronage (`metric`, `start_month`, `end_month`) |
+| `GET` | `/api/v1/analytics/summary` | Official report coverage and data-sufficiency labels |
+| `GET` | `/api/v1/analytics/metrics` | Metric units, definitions, source families and coverage |
+| `GET` | `/api/v1/analytics/routes` | Official route number ↔ GTFS route ID mapping (`q`) |
+| `GET` | `/api/v1/analytics/route-ranking` | Rank bus routes by an official metric |
+| `GET` | `/api/v1/analytics/trends` | Monthly route or network trend |
+| `GET` | `/api/v1/analytics/heatmap` | Route × month metric matrix |
+| `GET` | `/api/v1/analytics/patronage-vs-performance` | Route-level average boardings versus punctuality (`min_boardings`, `limit`) |
+| `GET` | `/api/v1/analytics/network` | Static GTFS network structure metrics |
 | `GET` | `/api/v1/realtime/status` | Poller health, entity counts, weekly quota usage |
 | `GET` | `/api/v1/realtime/vehicles` | Live vehicle positions (`mode=Bus`, `route_id`, `shape_id`, `bbox`, `limit`) |
 | `GET` | `/api/v1/realtime/trip-updates` | Live trip delays and stop-time predictions |

@@ -29,15 +29,18 @@ The MVP is reached at the end of **Phase 5**. AWS deployment is deliberately pos
 
 **Post-MVP optional:** a self-hosted observation collector may still be added when the
 project runs continuously on a server. It is not part of the MVP and does not block
-Phases 4-5. Historical analysis in the MVP is based on AT's published reports.
+Phase 6 onwards. Historical analysis in the MVP is based on AT's published reports.
 
-**Status (2026-11-18):** Phase 0, Phase 1, Phase 1B, Phase 2 and Phase 3 are complete,
-verified and pushed. Phase 3 delivered the buses-only scope, a stop-ETA board combining
-the static timetable with live delays, delay status, bus service alerts, direction/branch
-UX polish, imported service calendars and route-scoped stop/ETA search. **Phase 4 is
-complete in the working tree but not yet committed**: 13 official AT XLSX reports were imported
-into normalized MySQL tables, replacing self-hosted observation collection for the MVP.
-Phase 5 (analytics dashboard) is next. See `docs/phases/PHASE-04-official-historical-reports.md`.
+**Status (2026-11-20):** Phase 0, Phase 1, Phase 1B, Phase 2, Phase 3 and Phase 4 are
+complete, verified and pushed. Phase 4 imported 13 official AT XLSX reports into normalized
+MySQL tables, replacing self-hosted observation collection for the MVP. **Phase 5 is
+complete in the working tree but not yet committed**: the live map remains the landing
+page, analytics is a separate product area with Overview, Ridership, Performance,
+Relationships and Methodology subviews. The backend has a dedicated analytics service
+with metric metadata, route mapping, ranking, trend, heatmap, correlation and network
+endpoints. The UI uses a narrow civic-data shell, English date controls, explicit units,
+interactive charts and a compact methodology area. **MVP is reached.** Phase 6
+(Hardening) is next. See `docs/phases/PHASE-05-analytics-mvp.md`.
 
 ## Phase dependencies
 

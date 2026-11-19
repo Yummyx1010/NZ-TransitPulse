@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from .api.analytics import create_analytics_router
 from .api.arrivals import create_arrivals_router
 from .api.network import create_network_router
 from .api.official import create_official_router
@@ -76,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(create_realtime_router(active_settings, store, budget, poller))
     app.include_router(create_arrivals_router(active_settings, store))
     app.include_router(create_official_router())
+    app.include_router(create_analytics_router())
     return app
 
 

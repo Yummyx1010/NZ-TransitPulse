@@ -23,10 +23,10 @@ flowchart LR
 | `backend/app/models` | SQLAlchemy 2 ORM | GTFS static tables keyed by `feed_id` |
 | `backend/migrations` | Alembic | Versioned MySQL schema |
 | `backend/app/ingestion` | `httpx`, threading | Aggregated AT client, decoder, in-memory snapshot and 30 s poller |
-| `backend/app/reports` (Phase 4+) | `httpx`, `openpyxl`, SQLAlchemy | Download and parse official AT XLSX reports, normalize rows, record data-quality issues |
-| `backend/app/analytics` (Phase 5+) | SQL / aggregations | Punctuality, route ranking, heatmaps, trends, patronage vs performance, network metrics |
+| `backend/app/reports` | `httpx`, `openpyxl`, SQLAlchemy | Download and parse official AT XLSX reports, normalize rows, record data-quality issues |
+| `backend/app/analytics` | SQL / aggregations | Service layer for route ranking, heatmaps, trends, patronage vs performance and network metrics |
 | Database | MySQL 8 (local install; Docker Compose optional; RDS later) | Static network, official report tables, analytics inputs |
-| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet | Network explorer, live bus map and a passenger ETA/alerts board (analytics in Phase 5) |
+| `frontend` | React 18, TypeScript, Vite, TanStack Query, Leaflet, React Router | Routed app shell: live bus map on `/`, analytics dashboard on `/analytics` |
 | CI | GitHub Actions | Backend lint/tests and frontend typecheck/tests/build |
 
 ## Data flow
@@ -45,9 +45,10 @@ flowchart LR
    on demand, parsed with workbook-specific profiles, and normalized into source-tagged
    MySQL tables. Data-quality checks record missing columns, unmapped routes and
    impossible metric values.
-5. **Analytics** (Phase 5): the dashboard reads official punctuality/reliability and
-   patronage rows, and computes network metrics from the static GTFS tables. Official
-   indicators and locally computed metrics are labelled separately.
+5. **Analytics** (Phase 5): the `/analytics` page calls the analytics API. The service
+   layer de-duplicates official report families, hides school routes by default, ranks
+   routes, builds trends/heatmaps/scatter data, and derives network metrics from static
+   GTFS. Official indicators and locally computed metrics are labelled separately.
 
 ## Key decisions
 
@@ -86,6 +87,22 @@ flowchart LR
 | Viewport comes only from the selected shape | While geometry loads, falling back to all live vehicle positions framed the whole city; the map container also stays mounted so Leaflet is not recreated between route selections |
 | Arrival boards follow the selected route | The board and stop search are route-scoped by default because that is the product intent; an explicit `Show all buses at this stop` control prevents the filter from being hidden |
 | The map row has a bounded height | The 100-route list must scroll inside its own panel; otherwise the flex/grid row grows to thousands of pixels and Leaflet centres the route geometry outside the visible viewport. `FitBounds` also waits for a usable `getSize()` |
+| Live map remains the landing page | Users first want to see buses moving; analytics is a separate route so neither page becomes crowded |
+| Analytics aggregation lives in a service layer | API endpoints stay thin; de-duplication, school-route filtering and source priority are testable in one place |
+| Frontend pages, hooks and chart components are separate | Improves comprehensibility and alterability; a chart change cannot accidentally alter live-map behaviour |
+| Lightweight SVG charts instead of a chart framework | The MVP needs a few simple visuals; a smaller dependency surface improves testability and long-term maintenance |
+| School routes hidden by default in rankings | Near-zero school-service punctuality would otherwise dominate "worst route" results without useful context |
+| Left sidebar navigation | Future modules such as prediction models and network analysis need a scalable navigation surface; the live map remains the landing page |
+| Every analytic panel states a business question | `ChartInsight` explains what the chart shows and how to read it, preventing decorative analysis |
+| Route-level scatter aggregation | One point per route answers "are busy routes reliable?"; dense route-month points do not |
+| Heatmap is an optional diagnostic | Seasonality is useful only for a specific question, so it is collapsed rather than shown as a headline KPI |
+| English month controls generated from coverage | Native month inputs expose the OS locale; controlled year/month selects keep all product copy in English |
+| Monthly panel time series is a future model input | Official `route_no + month` metrics support seasonality, forecasting and anomaly detection, but route changes and missing months require careful modelling |
+| Analytics is split into five decision views | Overview, Ridership, Performance, Relationships and Methodology each answer a different question and reduce mixed semantics |
+| Metric metadata is shared by backend and frontend | `METRIC_CATALOG` and `metricDefinitions.ts` keep unit, definition, source family and kind consistent |
+| Ridership is never a performance grade | Most-used rankings and route attention rankings are separate views with different sort semantics |
+| Route mapping is additive and read-only | Official route numbers map to GTFS `route_id` through `short_name`; neither source is mutated |
+| Correlation has explicit validity rules | Spearman correlation is shown only with at least five comparable route averages and is labelled descriptive |
 
 ## Local topology (Phase 0-5)
 

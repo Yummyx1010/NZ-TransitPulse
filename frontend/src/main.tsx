@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import App from "./App";
 import "./index.css";
+import "./styles/tokens.css";
+import "./styles/layout.css";
+import "./styles/charts.css";
+import "./styles/analytics.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },

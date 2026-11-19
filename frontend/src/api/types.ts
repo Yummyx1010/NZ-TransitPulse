@@ -170,3 +170,144 @@ export interface RealtimeStatus {
   source: string;
   attribution: string;
 }
+
+export type AnalyticsMetric =
+  | "punctuality"
+  | "reliability"
+  | "boardings"
+  | "boardings_per_service_hour";
+
+export interface AnalyticsQuery {
+  metric: AnalyticsMetric;
+  startMonth?: string;
+  endMonth?: string;
+  includeSchoolRoutes?: boolean;
+  limit?: number;
+}
+
+export interface AnalyticsSummary {
+  report_count: number;
+  metrics: Record<
+    string,
+    {
+      first_month: string;
+      last_month: string;
+      months: number;
+      sufficiency: "none" | "limited" | "moderate" | "strong";
+    }
+  >;
+  attribution: string;
+}
+
+export interface RouteRankingItem {
+  route_no: string;
+  route_name: string | null;
+  sample_months: number;
+  first_month: string;
+  last_month: string;
+  first_value: number | null;
+  latest_value: number | null;
+  change: number | null;
+  average_value: number;
+}
+
+export interface TrendPoint {
+  month: string;
+  value: number;
+  sample_count: number;
+}
+
+export interface HeatmapItem {
+  route_no: string;
+  route_name: string | null;
+  values: (number | null)[];
+}
+
+export interface ScatterPoint {
+  route_no: string;
+  route_name: string | null;
+  boardings: number;
+  punctuality: number;
+  sample_months: number;
+  first_month: string;
+  last_month: string;
+}
+
+export interface NetworkSummary {
+  has_data: boolean;
+  bus_routes: number;
+  stops: number;
+  scheduled_trips: number;
+  shape_points: number;
+  stop_time_rows: number;
+  avg_stop_times_per_trip: number | null;
+}
+
+export interface MetricMetadata {
+  label: string;
+  short_label: string;
+  unit: string;
+  definition: string;
+  source_family: string;
+  kind: "service" | "ridership";
+  higher_is_better: boolean;
+  first_month: string | null;
+  last_month: string | null;
+  months: number;
+  sufficiency: "none" | "limited" | "moderate" | "strong";
+}
+
+export interface RouteCatalogItem {
+  route_no: string;
+  route_ids: string[];
+  route_name: string | null;
+  matched_in_gtfs: boolean;
+}
+
+export interface OfficialMetricPoint {
+  month: string;
+  value: number;
+}
+
+export interface CorrelationResult {
+  available: boolean;
+  method: "spearman";
+  coefficient?: number;
+  sample_size: number;
+  reason: string | null;
+}
+
+export interface AnalyticsMeta {
+  unit?: string;
+  definition?: string;
+  source_family?: string;
+  metric_kind?: "service" | "ridership";
+  higher_is_better?: boolean;
+  source_coverage?: {
+    first_month: string | null;
+    last_month: string | null;
+    months: number;
+    sufficiency: string;
+  };
+  warning?: string | null;
+}
+
+export interface AnalyticsRankingResponse extends AnalyticsMeta {
+  metric: string;
+  total: number;
+  items: RouteRankingItem[];
+}
+
+export interface AnalyticsTrendResponse extends AnalyticsMeta {
+  metric: string;
+  route_no: string | null;
+  total: number;
+  items: TrendPoint[];
+}
+
+export interface AnalyticsHeatmapResponse extends AnalyticsMeta {
+  metric: string;
+  months: string[];
+  total: number;
+  items: HeatmapItem[];
+}

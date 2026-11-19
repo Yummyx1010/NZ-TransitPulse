@@ -1,0 +1,277 @@
+.observatory-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.observatory-tab {
+  padding: 9px 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.observatory-tab:hover {
+  color: var(--ink);
+}
+
+.observatory-tab.is-active {
+  border-bottom-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+.observatory-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 var(--space-4);
+}
+
+.observatory-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.observatory-field-row {
+  display: flex;
+  gap: 6px;
+}
+
+.observatory-field input,
+.observatory-field select {
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.observatory-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.observatory-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.observatory-metric {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.observatory-metric-label {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.observatory-metric-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.observatory-metric-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.observatory-note {
+  margin: 0 0 var(--space-4);
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.observatory-note.is-warning {
+  border-left-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.observatory-ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.observatory-ranking-row {
+  display: grid;
+  grid-template-columns: 56px minmax(140px, 1fr) minmax(120px, 1.4fr) 84px 74px;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.observatory-ranking-row:hover,
+.observatory-ranking-row.is-selected {
+  border-color: var(--line);
+  background: var(--surface-muted);
+}
+
+.observatory-ranking-route {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+.observatory-ranking-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.observatory-ranking-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.observatory-ranking-change {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.observatory-heatmap-scroll {
+  overflow-x: auto;
+}
+
+.observatory-heatmap {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.observatory-heatmap th {
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.observatory-heatmap th:first-child {
+  text-align: left;
+}
+
+.observatory-heatmap td,
+.observatory-heatmap th[scope="row"] {
+  padding: 5px 7px;
+  border-radius: 3px;
+  text-align: right;
+}
+
+.observatory-heatmap th[scope="row"] {
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+.observatory-heat-0 { background: #f4f5f2; color: var(--ink-soft); }
+.observatory-heat-1 { background: #dfebe7; color: var(--accent-deep); }
+.observatory-heat-2 { background: #c2ddd6; color: var(--accent-deep); }
+.observatory-heat-3 { background: #9bc8be; color: #143f38; }
+.observatory-heat-4 { background: #6fa89c; color: #ffffff; }
+.observatory-heat-missing { background: var(--surface); color: var(--ink-faint); }
+
+.observatory-clear {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.observatory-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-soft);
+}
+
+.observatory-detail-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.observatory-detail-grid span {
+  color: var(--ink-faint);
+  font-size: 0.67rem;
+}
+
+.observatory-detail-grid strong {
+  font-size: 0.82rem;
+}
+
+.observatory-method-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.observatory-method-table th,
+.observatory-method-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  vertical-align: top;
+}
+
+.observatory-method-table th {
+  width: 190px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .observatory-ranking-row {
+    grid-template-columns: 48px minmax(100px, 1fr) 80px;
+  }
+
+  .observatory-bar-track,
+  .observatory-ranking-change {
+    display: none;
+  }
+}
