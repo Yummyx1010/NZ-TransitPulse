@@ -150,6 +150,17 @@ describe("API client", () => {
     );
   });
 
+  it("builds a route intelligence URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.routeIntelligence("70");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/analytics/routes/70/intelligence",
+    );
+  });
+
   it("throws a descriptive error on a failed response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
 

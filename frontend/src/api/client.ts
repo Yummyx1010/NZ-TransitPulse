@@ -18,6 +18,7 @@ import type {
   RealtimeVehicleQuery,
   RouteCatalogItem,
   RouteGeometry,
+  RouteIntelligence,
   NetworkSummary,
   ScatterPoint,
   RouteQuery,
@@ -124,6 +125,10 @@ export const api = {
   analyticsRoutes: (q?: string) =>
     fetchJson<{ total: number; items: RouteCatalogItem[] }>(
       `/analytics/routes${queryString({ q })}`,
+    ),
+  routeIntelligence: (routeNo: string) =>
+    fetchJson<RouteIntelligence>(
+      `/analytics/routes/${encodeURIComponent(routeNo)}/intelligence`,
     ),
   analyticsNetwork: () =>
     fetchJson<NetworkSummary>("/analytics/network"),

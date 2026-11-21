@@ -206,6 +206,86 @@ def route_catalog(db: Session, query: str | None = None) -> list[dict[str, objec
     ]
 
 
+def route_intelligence(db: Session, route_no: str) -> dict[str, object]:
+    """Evidence-based route summary derived only from imported official reports."""
+    clean_route = route_no.strip()
+    identity = next(
+        (item for item in route_catalog(db, clean_route) if item["route_no"] == clean_route),
+        None,
+    )
+    catalog = metric_metadata(db)
+    changes: list[dict[str, object]] = []
+    seasonality: dict[str, dict[str, object]] = {}
+    warnings: list[str] = []
+
+    for metric in ("punctuality", "reliability", "boardings"):
+        rows = _deduplicate(_route_rows(db, metric, None, None, True))
+        rows = [row for row in rows if row.route_no.strip() == clean_route]
+        if not rows:
+            continue
+        ordered = sorted(rows, key=lambda row: row.month)
+        latest = ordered[-1]
+        previous = ordered[-2] if len(ordered) > 1 else None
+        window = ordered[-12:]
+        latest_value = _float(latest.value)
+        previous_value = _float(previous.value) if previous is not None else None
+        window_average = (
+            round(sum(float(row.value) for row in window) / len(window), 6)
+            if window
+            else None
+        )
+        families = sorted({row.family for row in ordered})
+        definition_note = next(
+            (row.definition_note for row in reversed(ordered) if row.definition_note), None
+        )
+        if len(families) > 1:
+            warnings.append(
+                f"{metric} values for this route use more than one AT report family."
+            )
+        change = (
+            None
+            if latest_value is None or previous_value is None
+            else round(latest_value - previous_value, 6)
+        )
+        changes.append(
+            {
+                "metric": metric,
+                "label": catalog[metric]["label"],
+                "unit": catalog[metric]["unit"],
+                "source_family": catalog[metric]["source_family"],
+                "definition": catalog[metric]["definition"],
+                "definition_note": definition_note,
+                "first_month": ordered[0].month,
+                "last_month": latest.month,
+                "sample_months": len(ordered),
+                "sufficiency": _service_level(len(ordered)),
+                "latest_value": latest_value,
+                "latest_month": latest.month,
+                "previous_value": previous_value,
+                "previous_month": previous.month if previous is not None else None,
+                "change": change,
+                "rolling_12m_average": window_average,
+                "families": families,
+            }
+        )
+        seasonality[metric] = {
+            "months": [row.month for row in ordered],
+            "values": [_float(row.value) for row in ordered],
+        }
+
+    return {
+        "route_no": clean_route,
+        "route_name": identity["route_name"] if identity else None,
+        "route_ids": identity["route_ids"] if identity else [],
+        "matched_in_gtfs": identity["matched_in_gtfs"] if identity else False,
+        "has_official_data": bool(changes),
+        "changes": changes,
+        "seasonality": seasonality,
+        "warnings": sorted(set(warnings)),
+        "attribution": "Data source: Auckland Transport, licensed under CC BY 4.0",
+    }
+
+
 def _ranks(values: list[float]) -> list[float]:
     order = sorted(range(len(values)), key=lambda index: values[index])
     ranks = [0.0] * len(values)

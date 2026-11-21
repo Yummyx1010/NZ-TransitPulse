@@ -10,6 +10,7 @@ import {
 } from "react-leaflet";
 
 import type { RealtimeVehicle, ShapeGeometry } from "../api/types";
+import { prepareDisplayGeometry } from "../lib/geometry";
 import { displayStopName, formatCoordinate, formatFeedTime } from "../lib/format";
 import { type LatLng, boundsForShape, shouldFitBounds } from "../lib/mapBounds";
 import { createBusIcon } from "./busIcon";
@@ -85,7 +86,11 @@ export function StopMap({
   fitSignal,
   emptyMessage,
 }: StopMapProps) {
-  const geometryPoints = useMemo<LatLng[]>(() => boundsForShape(shape), [shape]);
+  const rawGeometryPoints = useMemo<LatLng[]>(() => boundsForShape(shape), [shape]);
+  const geometryPoints = useMemo<LatLng[]>(
+    () => prepareDisplayGeometry(rawGeometryPoints),
+    [rawGeometryPoints],
+  );
   const viewKey = shape?.shape_id ?? "no-shape";
   const hasContent = shape !== null || vehicles.length > 0;
 
@@ -105,7 +110,9 @@ export function StopMap({
       ) : null}
       {vehicles.length > 0 ? (
         <div className="map-legend" aria-label="Map legend">
-          <span><i className="legend-dot legend-route" /> Route geometry / stops</span>
+          <span title="GTFS shape points are simplified and gently rounded for display only">
+            <i className="legend-dot legend-route" /> Route geometry / stops
+          </span>
           <span><i className="legend-dot legend-vehicle" /> Live buses ({vehicles.length})</span>
         </div>
       ) : null}

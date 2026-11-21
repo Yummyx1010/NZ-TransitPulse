@@ -49,7 +49,7 @@ for a reviewer to see what is implemented and how it was verified.
 | --- | --- | --- |
 | v0.6.1 | Data analysis reorganization, new IA route skeleton, shared route context | [docs/releases/v0.6.1.md](docs/releases/v0.6.1.md) |
 | v0.6.2 | Global visual redesign | [docs/releases/v0.6.2.md](docs/releases/v0.6.2.md) |
-| v0.6.3 | Route Intelligence | Planned |
+| v0.6.3 | Route Intelligence | [docs/releases/v0.6.3.md](docs/releases/v0.6.3.md) |
 
 ## Technology
 

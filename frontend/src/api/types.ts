@@ -243,6 +243,44 @@ export interface NetworkSummary {
   avg_stop_times_per_trip: number | null;
 }
 
+export interface RouteChange {
+  metric: AnalyticsMetric;
+  label: string;
+  unit: string;
+  source_family: string;
+  definition: string;
+  definition_note: string | null;
+  first_month: string;
+  last_month: string;
+  sample_months: number;
+  sufficiency: string;
+  latest_value: number | null;
+  latest_month: string;
+  previous_value: number | null;
+  previous_month: string | null;
+  change: number | null;
+  rolling_12m_average: number | null;
+  families: string[];
+}
+
+export interface RouteIntelligence {
+  route_no: string;
+  route_name: string | null;
+  route_ids: string[];
+  matched_in_gtfs: boolean;
+  has_official_data: boolean;
+  changes: RouteChange[];
+  seasonality: Record<
+    string,
+    {
+      months: string[];
+      values: (number | null)[];
+    }
+  >;
+  warnings: string[];
+  attribution: string;
+}
+
 export interface MetricMetadata {
   label: string;
   short_label: string;

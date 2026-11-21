@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "../api/client";
-import type { AnalyticsQuery, AnalyticsMetric } from "../api/types";
+import type {
+  AnalyticsQuery,
+  AnalyticsMetric,
+  RouteIntelligence,
+} from "../api/types";
 
 export function useOfficialNetworkMetrics(
   metric: string,
@@ -101,6 +105,15 @@ export function useAnalyticsScatter(
         minBoardings,
         limit,
       ),
+    retry: 1,
+  });
+}
+
+export function useRouteIntelligence(routeNo: string | null) {
+  return useQuery<RouteIntelligence>({
+    queryKey: ["route-intelligence", routeNo],
+    queryFn: () => api.routeIntelligence(routeNo ?? ""),
+    enabled: Boolean(routeNo),
     retry: 1,
   });
 }

@@ -47,7 +47,8 @@ Network, Route Intelligence, Service Health, Network Analytics, Route Comparison
 & Methodology without rewriting backend calculations. See
 `docs/releases/v0.6.1.md`. v0.6.2 establishes the global visual system across the shell,
 live map and analytics without changing backend calculations. See
-`docs/releases/v0.6.2.md`.
+`docs/releases/v0.6.2.md`. v0.6.3 adds the Route Intelligence workspace and display-only
+GTFS shape smoothing for clearer map geometry. See `docs/releases/v0.6.3.md`.
 
 ## Phase dependencies
 

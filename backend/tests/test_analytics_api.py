@@ -5,13 +5,20 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analytics import service as analytics_service
 from app.core.config import Settings
 from app.db.session import get_db
 from app.main import create_app
-from app.models import OfficialNetworkMetric, OfficialReport, OfficialRouteMetric
+from app.models import (
+    GtfsFeed,
+    OfficialNetworkMetric,
+    OfficialReport,
+    OfficialRouteMetric,
+    Route,
+)
 
 
 def _seed_official(db: Session) -> None:
@@ -253,6 +260,38 @@ def test_route_catalog_matches_official_number_to_gtfs_route(
     route = next(item for item in body["items"] if item["route_no"] == "18")
     assert route["route_ids"] == ["R1"]
     assert route["matched_in_gtfs"] is True
+
+
+def test_route_intelligence_uses_official_rows_and_gtfs_mapping(
+    settings: Settings, loaded_session: Session
+) -> None:
+    _seed_official(loaded_session)
+    feed_id = loaded_session.execute(
+        select(GtfsFeed.id).where(GtfsFeed.is_active.is_(True))
+    ).scalar_one()
+    loaded_session.add(
+        Route(
+            feed_id=feed_id,
+            route_id="70-205",
+            short_name="70",
+            long_name="Botany To Britomart",
+            route_type=3,
+        )
+    )
+    loaded_session.commit()
+    body = _client(settings, loaded_session).get(
+        "/api/v1/analytics/routes/70/intelligence"
+    ).json()
+
+    assert body["route_no"] == "70"
+    assert body["matched_in_gtfs"] is True
+    assert "70-205" in body["route_ids"]
+    assert body["has_official_data"] is True
+    changes = {item["metric"]: item for item in body["changes"]}
+    assert changes["punctuality"]["latest_value"] == 0.9
+    assert changes["punctuality"]["previous_value"] == 0.8
+    assert changes["boardings"]["rolling_12m_average"] == 55000
+    assert body["seasonality"]["punctuality"]["months"] == ["2024-01", "2024-02"]
 
 
 def test_correlation_is_hidden_for_small_samples() -> None:

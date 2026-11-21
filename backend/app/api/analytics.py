@@ -61,6 +61,15 @@ def create_analytics_router() -> APIRouter:
         items = service.route_catalog(db, q)
         return {"total": len(items), "items": items}
 
+    @router.get(
+        "/routes/{route_no}/intelligence",
+        summary="Route-level historical metrics and evidence-based changes",
+    )
+    def route_intelligence(
+        route_no: str, db: Session = Depends(get_db)
+    ) -> dict[str, object]:
+        return service.route_intelligence(db, route_no)
+
     @router.get("/route-ranking", summary="Rank routes by an official metric")
     def route_ranking(
         metric: str = "punctuality",
