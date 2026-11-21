@@ -69,7 +69,7 @@ export function RidershipTrendChart({ totals, averages }: RidershipTrendChartPro
       </div>
 
       <svg
-        className="observatory-chart"
+        className="observatory-chart is-ridership"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={`${mode === "total" ? "Network total" : "Average per route"} ridership trend`}

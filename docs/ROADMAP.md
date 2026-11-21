@@ -42,6 +42,13 @@ endpoints. The UI uses a narrow civic-data shell, English date controls, explici
 interactive charts and a compact methodology area. **MVP is reached.** Phase 6
 (Hardening) is next. See `docs/phases/PHASE-05-analytics-mvp.md`.
 
+**v0.6 product upgrade:** v0.6.1 reorganizes the product into Network Overview, Live
+Network, Route Intelligence, Service Health, Network Analytics, Route Comparison and Data
+& Methodology without rewriting backend calculations. See
+`docs/releases/v0.6.1.md`. v0.6.2 establishes the global visual system across the shell,
+live map and analytics without changing backend calculations. See
+`docs/releases/v0.6.2.md`.
+
 ## Phase dependencies
 
 ```text

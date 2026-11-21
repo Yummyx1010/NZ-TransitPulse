@@ -43,6 +43,14 @@ for a reviewer to see what is implemented and how it was verified.
 | 5 | Analytics MVP: separate analytics page, official rankings/trends/heatmap/scatter, network metrics | [docs/phases/PHASE-05-analytics-mvp.md](docs/phases/PHASE-05-analytics-mvp.md) | [docs/test-reports/PHASE-05.md](docs/test-reports/PHASE-05.md) | — |
 | 6-7 | Hardening, AWS deployment | Planned | Planned | — |
 
+### Product upgrade v0.6
+
+| Release | Focus | Notes |
+| --- | --- | --- |
+| v0.6.1 | Data analysis reorganization, new IA route skeleton, shared route context | [docs/releases/v0.6.1.md](docs/releases/v0.6.1.md) |
+| v0.6.2 | Global visual redesign | [docs/releases/v0.6.2.md](docs/releases/v0.6.2.md) |
+| v0.6.3 | Route Intelligence | Planned |
+
 ## Technology
 
 | Layer | Choice |

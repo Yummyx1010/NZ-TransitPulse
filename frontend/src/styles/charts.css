@@ -3,6 +3,14 @@
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-panel);
+  margin-bottom: var(--space-4);
+  overflow: hidden;
+  transition: border-color var(--motion-base), box-shadow var(--motion-base);
+}
+
+.observatory-panel:hover {
+  border-color: #cfd8d3;
+  box-shadow: 0 2px 0 rgb(32 43 49 / 5%);
 }
 
 .observatory-panel-header {
@@ -70,11 +78,35 @@
   stroke-linejoin: round;
 }
 
+.observatory-chart.is-ridership .observatory-series,
+.observatory-chart.is-ridership .observatory-point {
+  stroke: var(--ridership);
+}
+
+.observatory-chart.is-ridership .observatory-point {
+  fill: var(--ridership);
+}
+
+.observatory-chart.is-performance .observatory-series,
+.observatory-chart.is-performance .observatory-point {
+  stroke: var(--performance);
+}
+
+.observatory-chart.is-performance .observatory-point {
+  fill: var(--performance);
+}
+
+.observatory-chart.is-relationship .observatory-point {
+  fill: var(--relationship);
+  stroke: var(--surface);
+}
+
 .observatory-point {
   fill: var(--accent);
   stroke: var(--surface);
   stroke-width: 2;
   cursor: pointer;
+  transition: r var(--motion-fast), fill var(--motion-fast);
 }
 
 .observatory-point:hover,

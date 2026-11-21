@@ -97,6 +97,7 @@ function renderApp() {
 }
 
 beforeEach(() => {
+  window.history.pushState({}, "", "/live");
   vi.clearAllMocks();
   mapMock.getSize.mockImplementation(() => ({ x: 800, y: 600 }));
   vi.mocked(api.networkStatus).mockResolvedValue({
@@ -163,6 +164,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.history.pushState({}, "", "/live");
 });
 
 describe("map fit when clicking from the unfiltered route list", () => {

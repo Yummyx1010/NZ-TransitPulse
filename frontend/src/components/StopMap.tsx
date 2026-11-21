@@ -123,7 +123,7 @@ export function StopMap({
         {geometryPoints.length > 1 ? (
           <Polyline
             positions={geometryPoints}
-            pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.85 }}
+            pathOptions={{ color: "#25685f", weight: 4, opacity: 0.9 }}
           />
         ) : null}
         {shape?.stops.map((stop, index) => (
@@ -133,7 +133,7 @@ export function StopMap({
             radius={6}
             pathOptions={{
               color: "#ffffff",
-              fillColor: "#1d4ed8",
+              fillColor: "#426f9c",
               fillOpacity: 1,
               weight: 2,
             }}

@@ -193,6 +193,7 @@ function stopNames(container: HTMLElement): string[] {
 }
 
 beforeEach(() => {
+  window.history.pushState({}, "", "/live");
   vi.mocked(api.routeGeometry).mockResolvedValue(GEOMETRY);
   vi.mocked(api.realtimeStatus).mockResolvedValue(REALTIME_STATUS);
   vi.mocked(api.realtimeVehicles).mockResolvedValue({
@@ -220,6 +221,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  window.history.pushState({}, "", "/live");
 });
 
 describe("Network explorer", () => {

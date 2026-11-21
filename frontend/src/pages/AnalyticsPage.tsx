@@ -14,11 +14,9 @@ import {
 import type { AnalyticsMetric } from "../api/types";
 
 const tabs = [
-  { to: "/analytics", label: "Overview", end: true },
   { to: "/analytics/ridership", label: "Ridership", end: false },
   { to: "/analytics/performance", label: "Performance", end: false },
   { to: "/analytics/relationships", label: "Relationships", end: false },
-  { to: "/analytics/methodology", label: "Methodology", end: false },
 ];
 
 function allowedMetricsForPath(pathname: string): AnalyticsMetric[] {
@@ -50,8 +48,8 @@ function AnalyticsLayout() {
   return (
     <div className="observatory-content">
       <PageHeader
-        title="Analytics"
-        description="Official AT performance and ridership reports, read as a transport observatory. Each view answers one operational question."
+        title="Network Analytics"
+        description="Official AT ridership and service performance reports, organised around three analytical questions."
         meta={[
           `${summaryQuery.data?.report_count ?? "—"} official reports`,
           coverage?.sufficiency ? `Data sufficiency: ${coverage.sufficiency}` : "Loading coverage",

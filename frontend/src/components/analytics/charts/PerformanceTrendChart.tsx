@@ -40,7 +40,7 @@ export function PerformanceTrendChart({
   return (
     <div>
       <svg
-        className="observatory-chart"
+        className="observatory-chart is-performance"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={`${definition.label} trend`}

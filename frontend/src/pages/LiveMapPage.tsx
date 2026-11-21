@@ -83,7 +83,7 @@ export default function LiveMapPage() {
       : "Awaiting GTFS data";
 
   return (
-    <main className="page live-map-page">
+    <div className="page live-map-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">Auckland, New Zealand</p>
@@ -241,6 +241,6 @@ export default function LiveMapPage() {
       />
 
       <Attribution text={statusQuery.data?.attribution} />
-    </main>
+    </div>
   );
 }

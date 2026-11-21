@@ -45,7 +45,7 @@ export function RelationshipScatter({
   return (
     <div>
       <svg
-        className="observatory-chart"
+        className="observatory-chart is-relationship"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label="Average monthly boardings versus official punctuality by route"

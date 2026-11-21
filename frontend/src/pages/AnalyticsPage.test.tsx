@@ -4,8 +4,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
+import { RouteContextProvider } from "../hooks/useRouteContext";
 import AnalyticsPage from "./AnalyticsPage";
-import { OverviewView } from "./analytics/OverviewView";
 import { RidershipView } from "./analytics/RidershipView";
 import { PerformanceView } from "./analytics/PerformanceView";
 import { RelationshipsView } from "./analytics/RelationshipsView";
@@ -24,19 +24,20 @@ vi.mock("../api/client", () => ({
   },
 }));
 
-function renderAnalytics(path = "/analytics") {
+function renderAnalytics(path = "/analytics/ridership") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/analytics" element={<AnalyticsPage />}>
-            <Route index element={<OverviewView />} />
-            <Route path="ridership" element={<RidershipView />} />
-            <Route path="performance" element={<PerformanceView />} />
-            <Route path="relationships" element={<RelationshipsView />} />
-          </Route>
-        </Routes>
+        <RouteContextProvider>
+          <Routes>
+            <Route path="/analytics" element={<AnalyticsPage />}>
+              <Route path="ridership" element={<RidershipView />} />
+              <Route path="performance" element={<PerformanceView />} />
+              <Route path="relationships" element={<RelationshipsView />} />
+            </Route>
+          </Routes>
+        </RouteContextProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -178,25 +179,22 @@ afterEach(() => {
 });
 
 describe("analytics views", () => {
-  it("opens the overview with separated ridership and attention rankings", async () => {
+  it("opens network analytics on ridership", async () => {
     renderAnalytics();
 
-    expect(screen.getByRole("heading", { name: "Analytics" })).toBeInTheDocument();
-    expect(await screen.findByText("13")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Network Analytics" })).toBeInTheDocument();
+    expect(await screen.findByText(/13 official reports/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Most used routes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Routes requiring attention" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ridership" })).toBeInTheDocument();
   });
 
-  it("opens ridership as a separate view with total and average series", async () => {
-    renderAnalytics("/analytics/ridership");
+  it("opens performance as a separate service-health analysis", async () => {
+    renderAnalytics("/analytics/performance");
 
     expect(
-      await screen.findByRole("heading", { name: "Most used routes" }),
+      await screen.findByRole("heading", { name: "Routes requiring attention" }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("heading", { name: "Ridership trend" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Official punctuality trend" })).toBeInTheDocument();
   });
 
   it("opens relationships with route-level explanation and seasonality detail", async () => {

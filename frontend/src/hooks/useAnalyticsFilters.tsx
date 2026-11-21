@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import type { AnalyticsMetric } from "../api/types";
+import { useRouteContext } from "./useRouteContext";
 
 const METRICS: AnalyticsMetric[] = [
   "punctuality",
@@ -38,6 +39,7 @@ function parseMetric(value: string | null): AnalyticsMetric {
 
 export function AnalyticsFilterProvider({ children }: { children: React.ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { routeNo, setRoute } = useRouteContext();
 
   const filters = useMemo<AnalyticsFilterState>(
     () => ({
@@ -45,10 +47,10 @@ export function AnalyticsFilterProvider({ children }: { children: React.ReactNod
       from: searchParams.get("from") ?? "2019-01",
       to: searchParams.get("to") ?? "2026-10",
       includeSchoolRoutes: searchParams.get("schools") === "true",
-      route: searchParams.get("route"),
+      route: routeNo,
       normalizeHeatmap: searchParams.get("normalize") === "true",
     }),
-    [searchParams],
+    [routeNo, searchParams],
   );
 
   function updateParam(key: string, value: string | null) {
@@ -69,7 +71,7 @@ export function AnalyticsFilterProvider({ children }: { children: React.ReactNod
     },
     setIncludeSchoolRoutes: (schools) =>
       updateParam("schools", schools ? "true" : null),
-    setRoute: (route) => updateParam("route", route),
+    setRoute,
     setNormalizeHeatmap: (normalize) =>
       updateParam("normalize", normalize ? "true" : null),
   };
